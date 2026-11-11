@@ -229,8 +229,12 @@ a.compteur:hover {
   scroll-margin-top: 12px;
 }
 
+.section__titre:focus {
+  outline-offset: 2px;
+}
+
 .section__tri {
-  margin: 2px 0 10px;
+  margin: 6px 0 10px;
   font-size: 0.875rem;
   color: var(--texte-secondaire);
 }
@@ -400,9 +404,10 @@ a.compteur:hover {
     font-size: 1.75rem;
   }
 
+  /* Même grille que les sections : chaque compteur au-dessus de sa colonne. */
   .compteurs {
-    gap: 16px;
-    max-width: 720px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
   }
 
   .sections {

@@ -14,10 +14,12 @@
       <p class="bandeau__titre">Équipements techniques</p>
       <p class="bandeau__mention">Démonstration · données entièrement fictives</p>
     </header>
+    <!-- Région d'annonce persistante : seul son texte change (lecteurs d'écran). -->
+    <p id="annonce" class="visuellement-masque" role="status" aria-live="polite"></p>
     <main id="contenu" tabindex="-1" aria-busy="true">
       <!-- État initial avant exécution du script : chargement. -->
       <h1>Tableau de bord</h1>
-      <p class="message" role="status">Chargement des équipements…</p>
+      <p class="message">Chargement des équipements…</p>
       <noscript>
         <p class="message message--erreur">Cette démonstration nécessite JavaScript.</p>
       </noscript>

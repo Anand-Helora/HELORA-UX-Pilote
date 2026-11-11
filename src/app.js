@@ -16,6 +16,15 @@ import {
 } from "./tableau-de-bord.js";
 
 const main = document.getElementById("contenu");
+const annonce = document.getElementById("annonce");
+
+/** Met à jour la région d'annonce persistante (après le rendu, pour être perçu comme un changement). */
+function annoncer(texte) {
+  annonce.textContent = "";
+  window.setTimeout(() => {
+    annonce.textContent = texte;
+  }, 50);
+}
 
 let etatSimule = lireEtatSimule(window.location.search);
 /** Identifiant de la carte depuis laquelle la fiche a été ouverte. */
@@ -80,12 +89,12 @@ function htmlCarte(equipement, categorie) {
   return `
     <li class="carte carte--${categorie.cle}" id="${idDomCarte(equipement.id)}">
       <h3 class="carte__titre">
-        <a class="carte__lien" href="${lienFiche(equipement.id)}" data-id="${echapper(equipement.id)}">
+        <a class="carte__lien" href="${lienFiche(equipement.id)}" data-id="${echapper(equipement.id)}" aria-describedby="${idDomCarte(equipement.id)}-meta">
           <span class="carte__id">${echapper(equipement.id)}</span>
           <span class="carte__designation">${echapper(equipement.designation)}</span>
         </a>
       </h3>
-      <p class="carte__meta">${badge(categorie)}<span>${info.libelle} : ${valeur}</span></p>
+      <p class="carte__meta" id="${idDomCarte(equipement.id)}-meta">${badge(categorie)}<span>${info.libelle} : ${valeur}</span></p>
     </li>`;
 }
 
@@ -110,7 +119,8 @@ function rendreChargement() {
   main.innerHTML = `
     <h1 tabindex="-1">Tableau de bord</h1>
     ${htmlCompteurs(null)}
-    <p class="message" role="status">Chargement des équipements…</p>`;
+    <p class="message">Chargement des équipements…</p>`;
+  annoncer("Chargement des équipements…");
 }
 
 function rendreErreur() {
@@ -136,10 +146,15 @@ function rendreTableau() {
     ${htmlCompteurs(compteurs)}
     ${
       equipements.length === 0
-        ? `<p class="message" role="status">Aucun équipement à afficher : le jeu de données de démonstration est vide.</p>`
+        ? `<p class="message">Aucun équipement à afficher : le jeu de données de démonstration est vide.</p>`
         : ""
     }
     <div class="sections">${sections.map(htmlSection).join("")}</div>`;
+  annoncer(
+    equipements.length === 0
+      ? "Aucun équipement à afficher : le jeu de données de démonstration est vide."
+      : `Tableau de bord affiché : ${CATEGORIES.map((c) => `${c.titre} ${compteurs[c.cle]}`).join(", ")}.`,
+  );
 }
 
 function rendreFiche(id) {
@@ -229,9 +244,9 @@ document.addEventListener("click", (evenement) => {
   if (!cible) return;
 
   if (cible.closest("a.lien-evitement")) {
-    // Lien d'évitement : déplacer le focus sans changer de vue.
+    // Lien d'évitement : déplacer le focus (visible) sans changer de vue.
     evenement.preventDefault();
-    main.focus();
+    focaliser(main.querySelector("h1") ?? main);
     return;
   }
 

@@ -174,6 +174,13 @@ export function formaterDateLongue(iso) {
   return date ? `${Number(date.jour)} ${MOIS[date.numeroMois - 1]} ${date.annee}` : "Non renseignée";
 }
 
+/** Libellés explicites : « 1 sur 3 » pouvait se lire comme une note faible. */
+const LIBELLES_PRIORITE = Object.freeze({
+  1: "1 (la plus haute)",
+  2: "2",
+  3: "3 (la plus basse)",
+});
+
 /**
  * Information secondaire affichée selon la catégorie (hypothèse du pilote) :
  * la priorité pour « prioritaire », l'échéance sinon.
@@ -181,7 +188,7 @@ export function formaterDateLongue(iso) {
  */
 export function informationCle(equipement) {
   if (equipement.categorie === "prioritaire") {
-    const valeur = equipement.priorite == null ? "Non renseignée" : `${equipement.priorite} sur 3`;
+    const valeur = LIBELLES_PRIORITE[equipement.priorite] ?? "Non renseignée";
     return { libelle: "Priorité", valeur, valeurLongue: valeur, iso: null };
   }
   return {

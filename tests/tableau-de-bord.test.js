@@ -161,8 +161,8 @@ describe("fiche équipement", () => {
   it("affiche la priorité pour un équipement prioritaire, l'échéance sinon", () => {
     assert.deepEqual(informationCle(eq("A", "prioritaire", { priorite: 2 })), {
       libelle: "Priorité",
-      valeur: "2 sur 3",
-      valeurLongue: "2 sur 3",
+      valeur: "2",
+      valeurLongue: "2",
       iso: null,
     });
     assert.deepEqual(informationCle(eq("B", "en_retard", { echeance: "2026-09-14" })), {
@@ -171,6 +171,12 @@ describe("fiche équipement", () => {
       valeurLongue: "14 septembre 2026",
       iso: "2026-09-14",
     });
+  });
+
+  it("explicite le sens de la priorité (1 = la plus haute)", () => {
+    assert.equal(informationCle(eq("A", "prioritaire", { priorite: 1 })).valeur, "1 (la plus haute)");
+    assert.equal(informationCle(eq("A", "prioritaire", { priorite: 3 })).valeur, "3 (la plus basse)");
+    assert.equal(informationCle(eq("A", "prioritaire")).valeur, "Non renseignée");
   });
 
   it("formate les dates en français et signale une date absente ou invalide", () => {
