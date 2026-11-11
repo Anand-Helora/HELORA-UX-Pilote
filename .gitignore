@@ -10,6 +10,7 @@ npm-debug.log*
 
 # Artefacts de build, de tests et de couverture
 dist/
+dist.construction/
 build/
 coverage/
 test-results/

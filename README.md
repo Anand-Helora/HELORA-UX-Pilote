@@ -8,7 +8,7 @@ Il fournit uniquement un socle :
 - un exemple minimal de code JavaScript (`src/slugify.js`) et ses tests (`tests/slugify.test.js`), **sans dépendance tierce**, à remplacer par le code de votre application ;
 - des consignes de collaboration pour les agents IA (`AGENTS.md`, `CLAUDE.md`).
 
-Il ne contient **aucune application métier**, aucun appel à une API d'IA, aucune clé ni aucun déploiement automatique.
+Il ne contient **aucune application métier**, aucun appel à une API d'IA, aucune clé ni aucun déploiement automatique (seule exception : la publication GitHub Pages de ce dépôt pilote, voir « Déploiement GitHub Pages et cache »).
 
 ## Structure
 
@@ -16,7 +16,7 @@ Il ne contient **aucune application métier**, aucun appel à une API d'IA, aucu
 .github/workflows/ci.yml   Tests automatiques sur les pull requests vers main
 src/slugify.js             Exemple de fonction pure (à remplacer)
 tests/slugify.test.js      Tests unitaires de l'exemple (node --test)
-package.json               Script « npm test », aucune dépendance
+package.json               Scripts « npm test » et « npm run construire » ; une dépendance de build (es-module-lexer)
 AGENTS.md / CLAUDE.md      Consignes pour les agents IA
 .gitignore                 Fichiers à ne pas versionner
 ```
@@ -88,6 +88,7 @@ Les catégories sont fixées dans les données ; elles ne sont jamais recalculé
 Prérequis : [Node.js](https://nodejs.org/) 20 ou plus récent (version LTS recommandée). Aucune installation de paquet n'est nécessaire.
 
 ```bash
+npm ci
 npm test
 ```
 
@@ -115,7 +116,9 @@ Les paramètres GitHub et les intégrations **ne sont pas copiés** par « Use t
 
 Le site publié est **construit** par `npm run construire` (`scripts/construire.mjs`, sans dépendance) dans `dist/` (non versionné) : chaque CSS/JS référencé par `index.html`, ainsi que chaque module importé transitivement, est copié sous un nom contenant le hash de son contenu (`src/app.js` → `src/app.<hash>.js`), et les références sont réécrites. Une ressource modifiée — ou un module qui en importe une — change donc d'URL ; les autres gardent la leur. Une **actualisation normale** suffit : le navigateur revalide `index.html`, qui pointe vers les nouvelles URL. Aucun `?v=` à changer à la main, aucun `Cache-Control: no-store`. Les sources (`index.html`, `src/`) ne sont pas modifiées et restent servables telles quelles en local.
 
-Le workflow `.github/workflows/pages.yml` lance les tests, construit et déploie à chaque fusion sur `main` (ou manuellement via *Run workflow*).
+Les imports sont analysés par [`es-module-lexer`](https://www.npmjs.com/package/es-module-lexer) (seule dépendance de développement, version exacte verrouillée dans `package-lock.json`) : un import en commentaire est ignoré, un import avec commentaire intermédiaire ou un module `.mjs` est suivi. Toute forme non prise en charge (import nu ou absolu, import dynamique non littéral, `import.meta`, ressource HTML autre que CSS/JS, `url()` dans le CSS…) fait **échouer** le build avec un message explicite ; le site est vérifié (références présentes, sous `/HELORA-UX-Pilote/`) avant d'être placé dans `dist/`, si bien qu'un échec ne laisse aucun `dist/` partiel.
+
+Le workflow `.github/workflows/pages.yml` installe les dépendances (`npm ci`), lance les tests, construit et déploie lors d'un push sur `main`, c'est-à-dire **après une fusion humaine** (relance manuelle possible via *Run workflow*, depuis `main` uniquement). Ce déploiement automatique est une exception autorisée par la personne propriétaire pour ce dépôt pilote seulement (voir `AGENTS.md`) ; les branches de PR ne sont jamais publiées.
 
 **Étape unique pour la personne propriétaire** : *Settings → Pages → Build and deployment → Source* = **GitHub Actions** (au lieu de « Deploy from a branch »). Tant que ce réglage n'est pas fait, Pages continue de publier la racine de `main` sans hash.
 
