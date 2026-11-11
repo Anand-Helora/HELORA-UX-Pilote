@@ -363,36 +363,44 @@ a.compteur:hover {
   color: var(--texte-secondaire);
 }
 
+/*
+ * Chaque ligne libellé / valeur passe sur deux lignes dès que la place manque
+ * (flex-wrap, bases en rem) : la fiche suit la taille du texte, y compris à
+ * 200 %, au lieu d'un point de rupture en pixels.
+ */
 .fiche__details {
   display: grid;
-  grid-template-columns: minmax(7.5rem, max-content) 1fr;
-  gap: 10px 16px;
+  gap: 12px;
   padding: 16px;
   background: var(--fond);
   border: 1px solid var(--bordure);
   border-radius: var(--rayon);
 }
 
+.fiche__ligne {
+  display: flex;
+  flex-wrap: wrap;
+  /* 2 px entre libellé et valeur quand ils passent sur deux lignes. */
+  gap: 2px 16px;
+}
+
 .fiche__details dt {
+  flex: 0 0 7.5rem;
+  max-width: 100%;
   font-weight: 600;
   color: var(--texte-secondaire);
+}
+
+.fiche__details dd {
+  flex: 1 1 9rem;
+  min-width: 0;
+  overflow-wrap: break-word;
 }
 
 .fiche__note {
   margin-top: 12px;
   font-size: 0.875rem;
   color: var(--texte-secondaire);
-}
-
-@media (max-width: 359px) {
-  .fiche__details {
-    grid-template-columns: 1fr;
-    gap: 2px;
-  }
-
-  .fiche__details dd {
-    margin-bottom: 8px;
-  }
 }
 
 @media (min-width: 960px) {

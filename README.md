@@ -32,7 +32,9 @@ Démonstration **entièrement fictive** : aucune donnée, aucun lieu ni aucune r
 | `src/tableau-de-bord.js` | Logique pure testée : compteurs, sections, tri, routes, états simulés |
 | `src/app.js` | Rendu DOM, navigation et gestion du focus |
 | `src/styles.css` | Styles mobile-first, profil « HELORA web » |
-| `tests/tableau-de-bord.test.js` | Tests `node --test` |
+| `src/navigation.js` | État de navigation porté par l'historique (carte d'origine d'une fiche) |
+| `tests/tableau-de-bord.test.js`, `tests/navigation.test.js` | Tests `node --test` |
+| `tests/navigateur/` | Tests navigateur optionnels (`npm run test:navigateur`) |
 | `docs/captures/issue-1/` | Captures navigateur de la démo |
 
 ### Ouvrir l'application localement
@@ -48,9 +50,21 @@ Puis ouvrir <http://localhost:8000/>. Avec Node.js, `npx serve .` fonctionne aus
 ### Essayer
 
 - Toucher un compteur pour aller à sa section : le focus passe sur le titre de la section.
-- Toucher une carte pour ouvrir sa fiche (lecture seule), puis « Retour au tableau de bord » ou le bouton retour du navigateur : le focus revient sur la carte d'origine.
+- Toucher une carte pour ouvrir sa fiche (lecture seule), puis « Retour au tableau de bord » ou le bouton retour du navigateur : le focus revient sur la carte d'origine, y compris après Précédent puis Suivant (l'origine est mémorisée dans l'entrée d'historique, sans stockage persistant).
 - États simulés : `?etat=chargement`, `?etat=vide`, `?etat=erreur` (par exemple <http://localhost:8000/?etat=erreur>). Le bouton « Réessayer » de l'état d'erreur réaffiche les données.
 - Fiche inconnue : <http://localhost:8000/#/equipement/EQ-999>.
+
+### Tests navigateur (optionnels)
+
+`npm test` (et la CI) ne couvre que la logique pure. Des tests de non-régression navigateur (historique Précédent / Suivant, focus, texte à 200 % en 360 px) sont versionnés dans `tests/navigateur/` mais **ne sont pas exécutés par la CI** : ils nécessitent Playwright et Chromium installés localement, sans en faire une dépendance du dépôt.
+
+```bash
+npm install --no-save playwright && npx playwright install chromium
+```
+
+```bash
+npm run test:navigateur
+```
 
 ### Tri de démonstration (non métier)
 

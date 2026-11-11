@@ -1,7 +1,8 @@
 /**
  * Rendu navigateur du tableau de bord fictif (Issue #1).
- * Aucune requête réseau, aucun stockage : l'état de navigation
- * (carte d'origine) reste en mémoire le temps de la page.
+ * Aucune requête réseau, aucun stockage persistant : la carte d'origine d'une
+ * fiche est portée par son entrée d'historique (history.state, voir
+ * navigation.js) et survit donc à Précédent / Suivant et au rechargement.
  */
 import { EQUIPEMENTS_FICTIFS } from "./donnees-fictives.js";
 import {
@@ -14,6 +15,7 @@ import {
   lireEtatSimule,
   trouverEquipement,
 } from "./tableau-de-bord.js";
+import { choisirFocusTableau, creerEtatFiche, lireOrigine, retourParHistorique } from "./navigation.js";
 
 const main = document.getElementById("contenu");
 const annonce = document.getElementById("annonce");
@@ -27,10 +29,15 @@ function annoncer(texte) {
 }
 
 let etatSimule = lireEtatSimule(window.location.search);
-/** Identifiant de la carte depuis laquelle la fiche a été ouverte. */
-let carteOrigine = null;
-/** Vrai si la fiche courante a été ouverte depuis le tableau de bord. */
-let ficheOuverteDepuisTableau = false;
+/**
+ * Carte cliquée dont la fiche est en cours d'ouverture : transférée dans
+ * history.state de l'entrée de la fiche dès son affichage.
+ */
+let carteCliquee = null;
+/** Carte d'origine de la fiche affichée (lue dans history.state). */
+let origineFicheAffichee = null;
+/** Vrai entre history.back() et l'affichage suivant : évite un double retour. */
+let retourEnCours = false;
 let vueCourante = null;
 
 function echapper(texte) {
@@ -183,12 +190,12 @@ function rendreFiche(id) {
       <p class="fiche__id">${echapper(equipement.id)}</p>
       <h1 tabindex="-1">${echapper(equipement.designation)}</h1>
       <dl class="fiche__details">
-        <dt>Identifiant</dt><dd>${echapper(equipement.id)}</dd>
-        <dt>Désignation</dt><dd>${echapper(equipement.designation)}</dd>
-        <dt>Catégorie</dt><dd>${badge(categorie)}</dd>
-        <dt>Statut</dt><dd>${echapper(equipement.statut)}</dd>
-        <dt>${info.libelle}</dt><dd>${valeur}</dd>
-        <dt>Zone</dt><dd>${echapper(equipement.zone)}</dd>
+        <div class="fiche__ligne"><dt>Identifiant</dt><dd>${echapper(equipement.id)}</dd></div>
+        <div class="fiche__ligne"><dt>Désignation</dt><dd>${echapper(equipement.designation)}</dd></div>
+        <div class="fiche__ligne"><dt>Catégorie</dt><dd>${badge(categorie)}</dd></div>
+        <div class="fiche__ligne"><dt>Statut</dt><dd>${echapper(equipement.statut)}</dd></div>
+        <div class="fiche__ligne"><dt>${info.libelle}</dt><dd>${valeur}</dd></div>
+        <div class="fiche__ligne"><dt>Zone</dt><dd>${echapper(equipement.zone)}</dd></div>
       </dl>
       <p class="fiche__note">Fiche en lecture seule. Données fictives de démonstration : la catégorie est imposée par le jeu d'essai et ne reflète aucune règle métier.</p>
     </article>`;
@@ -199,6 +206,7 @@ function rendreFiche(id) {
  * @param {{initial?: boolean}} options `initial` : premier affichage de la page
  */
 function afficher({ initial = false } = {}) {
+  retourEnCours = false;
   const route = analyserHash(window.location.hash);
 
   if (etatSimule === "chargement") {
@@ -213,26 +221,37 @@ function afficher({ initial = false } = {}) {
   }
 
   if (route.vue === "fiche") {
+    if (carteCliquee) {
+      // Mémoriser l'origine sur l'entrée d'historique de la fiche : elle reste
+      // disponible après Précédent puis Suivant.
+      history.replaceState(creerEtatFiche(carteCliquee), "");
+      carteCliquee = null;
+    }
+    origineFicheAffichee = lireOrigine(history.state);
     rendreFiche(route.id);
     vueCourante = "fiche";
     if (!initial) focaliser(main.querySelector("h1"));
     return;
   }
 
+  // Origine de la fiche que l'on quitte (Retour, Précédent ou Suivant).
+  const origine = vueCourante === "fiche" ? origineFicheAffichee : null;
+  origineFicheAffichee = null;
+  carteCliquee = null;
+
   // Tableau de bord : ne pas reconstruire s'il est déjà affiché (simple ancre).
   if (vueCourante !== "tableau") {
     rendreTableau();
     vueCourante = "tableau";
   }
-  ficheOuverteDepuisTableau = false;
 
-  const carte = carteOrigine && document.getElementById(idDomCarte(carteOrigine));
-  carteOrigine = null;
-  if (carte) {
+  const carte = origine && document.getElementById(idDomCarte(origine));
+  const cible = choisirFocusTableau({ origine, carteExiste: Boolean(carte), section: route.section, initial });
+  if (cible === "carte") {
     focaliser(carte.querySelector("a"), { bloc: "center" });
-  } else if (route.section) {
+  } else if (cible === "section") {
     focaliser(document.getElementById(route.section));
-  } else if (!initial) {
+  } else if (cible === "titre") {
     focaliser(main.querySelector("h1"));
   }
 }
@@ -263,15 +282,18 @@ document.addEventListener("click", (evenement) => {
 
   const lienCarte = cible.closest("a.carte__lien[data-id]");
   if (lienCarte) {
-    carteOrigine = lienCarte.dataset.id;
-    ficheOuverteDepuisTableau = true;
+    carteCliquee = lienCarte.dataset.id;
     return; // navigation par défaut vers #/equipement/<id>
   }
 
   const retour = cible.closest('a[data-action="retour"]');
-  if (retour && ficheOuverteDepuisTableau) {
+  if (retour && (retourEnCours || retourParHistorique(history.state))) {
     // Revenir à l'entrée précédente évite d'empiler fiche → tableau → fiche.
+    // history.back() est asynchrone : une seconde activation rapide (double
+    // clic, Entrée maintenue) est ignorée pour ne pas reculer de deux entrées.
     evenement.preventDefault();
+    if (retourEnCours) return;
+    retourEnCours = true;
     history.back();
     return;
   }
@@ -280,7 +302,7 @@ document.addEventListener("click", (evenement) => {
   if (reessayer) {
     etatSimule = null;
     vueCourante = null;
-    history.replaceState(null, "", `${window.location.pathname}${window.location.hash}`);
+    history.replaceState(history.state, "", `${window.location.pathname}${window.location.hash}`);
     afficher();
   }
 });
