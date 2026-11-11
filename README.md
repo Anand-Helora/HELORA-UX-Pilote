@@ -111,6 +111,16 @@ Les paramètres GitHub et les intégrations **ne sont pas copiés** par « Use t
 5. **Auto-fix** : la correction automatique des retours de CI ou de revue par Claude Code s'active **par session**, au cas par cas ; elle n'est pas configurée dans le dépôt.
 6. **Déploiement (optionnel)** : aucun déploiement n'est fourni. Si l'application doit être publiée (GitHub Pages ou autre), l'ajouter explicitement dans le dépôt cible, après relecture.
 
+## Déploiement GitHub Pages et cache (Issue #7)
+
+Le site publié est **construit** par `npm run construire` (`scripts/construire.mjs`, sans dépendance) dans `dist/` (non versionné) : chaque CSS/JS référencé par `index.html`, ainsi que chaque module importé transitivement, est copié sous un nom contenant le hash de son contenu (`src/app.js` → `src/app.<hash>.js`), et les références sont réécrites. Une ressource modifiée — ou un module qui en importe une — change donc d'URL ; les autres gardent la leur. Une **actualisation normale** suffit : le navigateur revalide `index.html`, qui pointe vers les nouvelles URL. Aucun `?v=` à changer à la main, aucun `Cache-Control: no-store`. Les sources (`index.html`, `src/`) ne sont pas modifiées et restent servables telles quelles en local.
+
+Le workflow `.github/workflows/pages.yml` lance les tests, construit et déploie à chaque fusion sur `main` (ou manuellement via *Run workflow*).
+
+**Étape unique pour la personne propriétaire** : *Settings → Pages → Build and deployment → Source* = **GitHub Actions** (au lieu de « Deploy from a branch »). Tant que ce réglage n'est pas fait, Pages continue de publier la racine de `main` sans hash.
+
+Vérifier localement : `npm run construire`, puis servir `dist/`.
+
 ## Confidentialité et droits
 
 Ce dépôt modèle est **public**. Le fait qu'il soit public **n'autorise pas** à y publier, ni dans les dépôts qui en sont issus :

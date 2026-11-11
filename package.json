@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "test": "node --test",
-    "test:navigateur": "node --test tests/navigateur/regressions.navigateur.mjs"
+    "test:navigateur": "node --test tests/navigateur/regressions.navigateur.mjs",
+    "construire": "node scripts/construire.mjs"
   },
   "engines": {
     "node": ">=20"
