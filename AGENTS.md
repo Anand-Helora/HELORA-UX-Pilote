@@ -21,10 +21,11 @@ Ce fichier décrit le comportement attendu de tout agent travaillant dans ce dé
 - Le dépôt est public : n'y mettre aucun secret, jeton, clé d'API, identifiant interne ni donnée réelle (patients, personnels, établissements…). Utiliser uniquement des données fictives.
 - Ne pas publier de code HELORA protégé par droits d'auteur sans autorisation explicite.
 - Aucun appel à une API d'IA, aucun déploiement automatique, aucun bot de fusion.
+- **Exception autorisée par la personne propriétaire (dépôt pilote uniquement)** : le site GitHub Pages de ce dépôt est construit et publié par `.github/workflows/pages.yml` lors d'un push sur `main`, donc **après une fusion humaine**, si `npm test` et le build réussissent (relance manuelle possible depuis `main`). Restent interdits : la fusion ou l'auto-merge par un agent, la publication d'une branche de PR, et tout déploiement automatique d'un autre dépôt ou service non approuvé.
 
 ## Tests
 
-- Code dans `src/`, tests dans `tests/` (fichiers `*.test.js`), exécutés avec `node --test` via `npm test`.
+- Code dans `src/`, tests dans `tests/` (fichiers `*.test.js`), exécutés avec `node --test` via `npm test` (après `npm ci`, qui installe les dépendances de build verrouillées).
 - Aucune dépendance tierce tant qu'elle n'est pas nécessaire ; les tests navigateur (Playwright…) s'ajoutent au cas par cas.
 
 ## Conception et revue UX/UI (si interface concernée)
