@@ -68,7 +68,8 @@ describe("construireScene : budgets (batterie, lisibilité)", () => {
       assert.ok(compter(neural, "impulsion impulsion--tete") <= BUDGETS.neural[cle].impulsions);
       const orbital = construireScene("orbital", format);
       // Chaque satellite existe en deux copies (arrière / avant de la planète).
-      assert.ok(compter(orbital, "o-satellite") / 2 <= BUDGETS.orbital[cle].satellites);
+      // Plus le satellite de la lune (desktop), lui aussi en deux copies.
+      assert.ok(compter(orbital, "o-satellite") / 2 <= BUDGETS.orbital[cle].satellites + (BUDGETS.orbital[cle].lune ?? 0));
       const hybride = construireScene("hybride", format);
       assert.ok(compter(hybride, "n-noeud") <= BUDGETS.hybride[cle].noeuds);
       assert.ok(

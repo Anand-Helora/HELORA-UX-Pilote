@@ -25,9 +25,9 @@ const MOBILE_MAX = 599;
 
 /** Budgets par thème et par format (plafonds vérifiés par les tests). */
 export const BUDGETS = Object.freeze({
-  neural: { desktop: { noeuds: 26, impulsions: 7, respirations: 6, poussiere: 34 }, mobile: { noeuds: 12, impulsions: 3, respirations: 3, poussiere: 0 } },
-  orbital: { desktop: { orbites: 3, satellites: 3, poussiere: 26 }, mobile: { orbites: 2, satellites: 2, poussiere: 10 } },
-  hybride: { desktop: { noeuds: 16, impulsions: 3, arrimages: 2, satellites: 2, orbites: 2 }, mobile: { noeuds: 8, impulsions: 1, arrimages: 1, satellites: 1, orbites: 2 } },
+  neural: { desktop: { noeuds: 26, impulsions: 9, respirations: 6, poussiere: 34 }, mobile: { noeuds: 12, impulsions: 3, respirations: 3, poussiere: 0 } },
+  orbital: { desktop: { orbites: 3, satellites: 3, lune: 1, poussiere: 26 }, mobile: { orbites: 2, satellites: 2, poussiere: 10 } },
+  hybride: { desktop: { noeuds: 18, impulsions: 4, arrimages: 2, satellites: 2, orbites: 2 }, mobile: { noeuds: 8, impulsions: 1, arrimages: 1, satellites: 1, orbites: 2 } },
 });
 
 /** Générateur pseudo-aléatoire déterministe (mulberry32). */
@@ -272,6 +272,7 @@ function systemeOrbital(p, { orbites, satellites, prefixe, balayage = true, alea
       const style = ` style="--duree:${s2(duree)};--delai:${s2(-departs[i] * duree)};--o-fixe:${r1(-departs[i] * 100 - 8)}"`;
       for (const cible of [arriere, avant]) {
         cible.push(ellipse(`o-trainee o-trainee--${i + 1}`, style));
+        cible.push(ellipse(`o-aura o-aura--${i + 1}`, style));
         cible.push(ellipse(`o-satellite o-satellite--${i + 1}`, style));
       }
     }
@@ -306,9 +307,20 @@ function sceneOrbital(largeur, hauteur, mobile) {
   const alea = generateur(0x0b17a1 + Math.round(largeur / 40));
   const p = geometriePlanete(largeur, hauteur, mobile);
   const systeme = systemeOrbital(p, { orbites: budget.orbites, satellites: budget.satellites, prefixe: "o", alea });
-  const lune = mobile
-    ? ""
-    : `<g class="plan plan--lune"><circle class="o-lune" cx="${r1(largeur * 0.1)}" cy="${r1(hauteur * 0.8)}" r="${r1(Math.max(largeur, hauteur) * 0.035)}" fill="url(#o-planete)"/></g>`;
+  // Lune (desktop) : petite sphère dans la marge gauche, avec son propre
+  // satellite rapide (9 s par tour) — un mouvement net là où l'écran est libre.
+  let lune = "";
+  if (!mobile) {
+    const l = { cx: largeur * 0.09, cy: hauteur * 0.74, r: Math.max(largeur, hauteur) * 0.032 };
+    const style = ` style="--duree:9s;--delai:-6.3s;--o-fixe:-30"`;
+    const anneau = (classe, st = "") => `<ellipse class="${classe}" rx="${r1(l.r * 2.3)}" ry="${r1(l.r * 2.3 * 0.36)}" pathLength="100"${st}/>`;
+    const t = `translate(${r1(l.cx)} ${r1(l.cy)}) rotate(-24)`;
+    lune =
+      `<g class="plan plan--lune"><g transform="${t}">${anneau("o-orbite o-orbite--1")}${anneau("o-trainee o-trainee--3", style)}${anneau("o-satellite o-satellite--3", style)}</g>` +
+      `<circle class="o-lune" cx="${r1(l.cx)}" cy="${r1(l.cy)}" r="${r1(l.r)}" fill="url(#o-planete)"/>` +
+      `<g transform="${t}"><g clip-path="url(#o-avant-lune)">${anneau("o-trainee o-trainee--3", style)}${anneau("o-satellite o-satellite--3", style)}</g></g></g>`;
+    lune = lune.replace("<g class=\"plan plan--lune\">", `<defs><clipPath id="o-avant-lune" clipPathUnits="userSpaceOnUse"><rect x="${r1(-l.r * 3)}" y="0" width="${r1(l.r * 6)}" height="${r1(l.r * 3)}"/></clipPath></defs><g class="plan plan--lune">`);
+  }
   return (
     `<defs>${defsPlanete("o")}${systeme.defs}</defs>` +
     `<g class="plan plan--lointain">${poussiere(alea, budget.poussiere, largeur, hauteur, (x, y) => Math.hypot(x - p.cx, y - p.cy) < p.r * 1.1)}</g>` +

@@ -362,8 +362,8 @@ main {
 
 .impulsion--tete {
   --voyage: voyage-tete;
-  stroke: #d8fffb;
-  stroke-width: 3.2;
+  stroke: #e6fffc;
+  stroke-width: 4;
   stroke-dasharray: 3 300;
   stroke-dashoffset: 3;
 }
@@ -371,8 +371,8 @@ main {
 .impulsion--trainee {
   --voyage: voyage-trainee;
   stroke: #5fd6d0;
-  stroke-width: 2;
-  stroke-opacity: 0.45;
+  stroke-width: 2.6;
+  stroke-opacity: 0.6;
   stroke-dasharray: 18 300;
   stroke-dashoffset: 18;
 }
@@ -403,15 +403,15 @@ main {
 }
 
 .o-orbite--1 {
-  stroke-opacity: 0.26;
+  stroke-opacity: 0.36;
 }
 
 .o-orbite--2 {
-  stroke-opacity: 0.16;
+  stroke-opacity: 0.24;
 }
 
 .o-orbite--3 {
-  stroke-opacity: 0.12;
+  stroke-opacity: 0.18;
   stroke-dasharray: 0.6 0.9;
 }
 
@@ -434,6 +434,7 @@ main {
 
 /* Satellite : un point (tiret quasi nul, bout rond) ; traîne : arc fin. */
 .o-satellite,
+.o-aura,
 .o-trainee,
 .o-balayage {
   fill: none;
@@ -447,22 +448,41 @@ main {
 }
 
 .o-satellite--1 {
-  stroke-width: 9;
+  stroke-width: 11;
 }
 
 .o-satellite--2 {
-  stroke-width: 6;
+  stroke-width: 8;
 }
 
 .o-satellite--3 {
-  stroke-width: 4.5;
+  stroke-width: 6;
+}
+
+/* Aura : même point, très large et diffus (lueur sans filtre coûteux). */
+.o-aura {
+  stroke: #7fdcf0;
+  stroke-opacity: 0.16;
+  stroke-dasharray: 0.001 99.999;
+}
+
+.o-aura--1 {
+  stroke-width: 34;
+}
+
+.o-aura--2 {
+  stroke-width: 24;
+}
+
+.o-aura--3 {
+  stroke-width: 18;
 }
 
 .o-trainee {
   stroke: #7fdcf0;
-  stroke-width: 2;
-  stroke-opacity: 0.5;
-  stroke-dasharray: 0 0.001 7 92.999;
+  stroke-width: 2.6;
+  stroke-opacity: 0.6;
+  stroke-dasharray: 0 0.001 12 87.999;
 }
 
 .o-balayage {
@@ -477,7 +497,8 @@ main {
   stroke: #5fd6d0;
 }
 
-.scene--hybride .o-trainee {
+.scene--hybride .o-trainee,
+.scene--hybride .o-aura {
   stroke: #5fd6d0;
 }
 
@@ -1619,6 +1640,7 @@ span.compteur {
 
   .impulsion,
   .o-satellite,
+  .o-aura,
   .o-trainee,
   .o-balayage {
     stroke-dashoffset: var(--o-fixe);
