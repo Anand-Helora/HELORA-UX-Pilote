@@ -37,14 +37,40 @@ const AVEC_SCHEMA = /^[a-z][a-z0-9+.-]*:/i;
 // Chemin de base du site publié : sert à vérifier qu'aucune référence n'en sort.
 export const BASE_PAGES = "/HELORA-UX-Pilote/";
 
-// Références de fichier dans du CSS (insensible à la casse, comme CSS) ; les
-// fragments (`url(#id)`) et les URI data: restent permis.
-const REFERENCE_CSS = /@import\b|\b(?:url|image-set|src)\s*\(\s*["']?(?!#|data:)/i;
+// Références CSS (insensibles à la casse, comme CSS). `url()` : la valeur est
+// extraite (citée, non citée, espacée) avant d'admettre les seules exceptions
+// sans fichier : fragment (`#id`) et URI `data:`.
+const URL_CSS = /\burl\(\s*(?:"([^"]*)"|'([^']*)'|([^\s"')]*))\s*\)/gi;
+const AUTRE_REFERENCE_CSS = /@import\b|\b(?:image-set|src)\s*\(/i;
 
 /** Garde-fou : le build ne réécrit pas les références CSS, il les refuse. */
 function verifierCss(css, ou) {
-  if (REFERENCE_CSS.test(css)) throw new Error(`${ou} référence d'autres fichiers (@import/url) : non pris en charge par le build.`);
+  const valeurs = [...css.matchAll(URL_CSS)].map((m) => (m[1] ?? m[2] ?? m[3]).trim());
+  const appels = css.match(/\burl\(/gi)?.length ?? 0;
+  if (AUTRE_REFERENCE_CSS.test(css) || valeurs.length !== appels || valeurs.some((v) => !/^(#|data:)/i.test(v))) {
+    throw new Error(`${ou} référence d'autres fichiers (@import/url) : non pris en charge par le build.`);
+  }
 }
+
+/**
+ * Code JavaScript en ligne (script classique, gestionnaire on*, lien
+ * javascript:) : refusé s'il importe un module, repéré par es-module-lexer
+ * (commentaires compris). Un code qui contient « import » sans pouvoir être
+ * analysé est refusé par prudence.
+ */
+function refuserImportEnLigne(code, ou) {
+  if (!/\bimport\b/.test(code)) return;
+  let imports;
+  try {
+    [imports] = parse(code);
+  } catch {
+    throw new Error(`index.html : ${ou} non analysable contenant « import », non pris en charge (utiliser un module avec src=).`);
+  }
+  if (imports.length) throw new Error(`index.html : ${ou} contenant un import, non pris en charge (utiliser un module avec src=).`);
+}
+
+// Types de <script> exécutés comme JavaScript classique.
+const SCRIPT_CLASSIQUE = /^(|(text|application)\/(x-)?(java|ecma)script|text\/jscript|text\/livescript)$/;
 
 /**
  * Références href/src de index.html à publier, repérées par parse5 :
@@ -59,14 +85,18 @@ function referencesHtml(html) {
     if ("srcset" in attributs) throw new Error("index.html : srcset non pris en charge par le build.");
     if ("style" in attributs) verifierCss(attributs.style, "index.html (attribut style)");
     if (noeud.tagName === "style") verifierCss(noeud.childNodes.map((t) => t.value ?? "").join(""), "index.html (<style>)");
+    const type = (attributs.type ?? "").trim().toLowerCase();
+    if (noeud.tagName === "script" && type === "importmap") throw new Error("index.html : importmap non pris en charge (change la résolution des imports).");
     if (noeud.tagName === "script" && !("src" in attributs)) {
-      const code = noeud.childNodes.map((t) => t.value ?? "").join("");
-      if ((attributs.type ?? "").trim().toLowerCase() === "module" || /\bimport\s*\(/.test(code)) {
-        throw new Error("index.html : script module en ligne (ou import() en ligne) non pris en charge (utiliser src=).");
-      }
+      if (type === "module") throw new Error("index.html : script module en ligne non pris en charge (utiliser src=).");
+      if (SCRIPT_CLASSIQUE.test(type)) refuserImportEnLigne(noeud.childNodes.map((t) => t.value ?? "").join(""), "script en ligne");
+    }
+    for (const [nom, valeur] of Object.entries(attributs)) {
+      if (nom.startsWith("on")) refuserImportEnLigne(valeur, `gestionnaire ${nom}`);
     }
     for (const nom of ["href", "src"]) {
       if (!(nom in attributs)) continue;
+      if (/^\s*javascript:/i.test(attributs[nom])) refuserImportEnLigne(attributs[nom].replace(/^\s*javascript:/i, ""), "lien javascript:");
       const chemin = referenceHtml(attributs[nom]);
       if (chemin) {
         const { startOffset: debut, endOffset: fin } = noeud.sourceCodeLocation.attrs[nom];

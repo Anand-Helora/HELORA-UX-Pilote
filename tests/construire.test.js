@@ -191,6 +191,17 @@ describe("construire : analyse des imports (retours Codex PR #10)", () => {
     await assert.rejects(verifier(sortie), /absent du site construit/);
   });
 
+  it("accepte les URL CSS internes citées ou espacées (fragments, data:) et les scripts en ligne sans import", async () => {
+    const source = await miniSite("css-internes", {
+      "index.html":
+        '<link rel="stylesheet" href="s.css"><div style="fill: url( \'#g\' )"></div>' +
+        '<script>window.x = "important";</script><script type="application/ld+json">{"import": "./rien.js"}</script>',
+      "s.css": 'a{fill:url("#g-hub")}b{fill:url( #g-hub )}c{background:URL(\'data:image/png;base64,AA==\')}d{fill:url(#g)}',
+    });
+    const manifeste = await construire(source, join(temp, "dist-css-internes"));
+    assert.deepEqual(Object.keys(manifeste), ["s.css"]);
+  });
+
   const refus = [
     ["import nu", { "src/app.js": 'import "lodash";\n' }, /« lodash » non pris en charge/],
     ["import absolu", { "src/app.js": 'import "/src/x.js";\n' }, /« \/src\/x\.js » non pris en charge/],
@@ -210,6 +221,13 @@ describe("construire : analyse des imports (retours Codex PR #10)", () => {
     ["CSS avec image-set()", { "index.html": '<link rel="stylesheet" href="s.css">', "s.css": 'a{background:image-set("a.png" 1x)}' }, /@import\/url/],
     ["style en ligne avec url()", { "index.html": '<div style="background:Url(a.png)"></div>' }, /index\.html.*@import\/url/],
     ["balise <style> avec @import", { "index.html": '<style>@import "x.css";</style>' }, /index\.html.*@import\/url/],
+    ["CSS avec url() citée et espacée vers un fichier", { "index.html": '<link rel="stylesheet" href="s.css">', "s.css": 'a{background:url( "a.png" )}' }, /@import\/url/],
+    ["CSS mêlant fragment et fichier", { "index.html": '<link rel="stylesheet" href="s.css">', "s.css": 'a{fill:url(#g)}b{background:url(b.png)}' }, /@import\/url/],
+    ["script classique en ligne avec import() commenté", { "index.html": '<script>import /* paresseux */ ("./src/lazy.js");</script>', "src/lazy.js": "" }, /script en ligne/],
+    ["script en ligne non analysable contenant import", { "index.html": "<script>with (o) { import(x) }</script>" }, /script en ligne/],
+    ["importmap", { "index.html": '<script type="importmap">{"imports":{}}</script>' }, /importmap/],
+    ["gestionnaire d'événement avec import()", { "index.html": '<button onclick="import(\'./src/x.js\')"></button>' }, /onclick/],
+    ["lien javascript: avec import()", { "index.html": '<a href="javascript:import(\'./src/x.js\')">x</a>' }, /javascript:/],
     ["balise <base>", { "index.html": '<base href="/autre/">' }, /<base>/],
     ["attribut HTML non cité vers un fichier absent", { "index.html": "<script src=src/absent.js></script>" }, /introuvable : src\/absent\.js/],
   ];
