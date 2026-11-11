@@ -436,6 +436,10 @@ describe("V4 : quatre ambiances visuelles (Issue #5)", () => {
     await page.waitForSelector(".sections");
     await page.click('button[data-action="ambiance"]');
     assert.ok((await animationsAmbiance(page)).every((e) => e === "paused"));
+    // La lumière du filet du bandeau est aussi mise en pause.
+    const filet = () =>
+      page.evaluate(() => document.getAnimations().filter((a) => a.animationName === "filet-lumiere").map((a) => a.playState));
+    assert.deepEqual(await filet(), ["paused"]);
     await page.click('label:has(input[value="orbital"])');
     await attendreTheme(page, "orbital");
     const etats = await animationsAmbiance(page);

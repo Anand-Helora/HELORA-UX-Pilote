@@ -25,9 +25,9 @@ const MOBILE_MAX = 599;
 
 /** Budgets par thème et par format (plafonds vérifiés par les tests). */
 export const BUDGETS = Object.freeze({
-  neural: { desktop: { noeuds: 26, impulsions: 9, respirations: 6, poussiere: 34 }, mobile: { noeuds: 12, impulsions: 3, respirations: 3, poussiere: 0 } },
+  neural: { desktop: { noeuds: 26, impulsions: 9, respirations: 6, poussiere: 34 }, mobile: { noeuds: 12, impulsions: 4, respirations: 3, poussiere: 0 } },
   orbital: { desktop: { orbites: 3, satellites: 3, lune: 1, poussiere: 26 }, mobile: { orbites: 2, satellites: 2, poussiere: 10 } },
-  hybride: { desktop: { noeuds: 18, impulsions: 4, arrimages: 2, satellites: 2, orbites: 2 }, mobile: { noeuds: 8, impulsions: 1, arrimages: 1, satellites: 1, orbites: 2 } },
+  hybride: { desktop: { noeuds: 18, impulsions: 4, arrimages: 2, satellites: 2, orbites: 2 }, mobile: { noeuds: 9, impulsions: 2, arrimages: 1, satellites: 1, orbites: 2 } },
 });
 
 /** Générateur pseudo-aléatoire déterministe (mulberry32). */
@@ -53,9 +53,13 @@ const s2 = (n) => `${Math.round(n * 100) / 100}s`;
  */
 function zonesCalmes(largeur, mobile) {
   if (mobile) {
+    // Rectangles réels de la fiche en 360 px : bouton Retour, ligne repère
+    // (identifiant, à gauche) et titre ; le reste de l'en-tête peut s'animer.
     return [
       { x0: 0, y0: 175, x1: largeur, y1: 265 },
-      { x0: 0, y0: 185, x1: largeur, y1: 410 },
+      { x0: 0, y0: 196, x1: largeur, y1: 266 },
+      { x0: 0, y0: 266, x1: Math.min(largeur, 250), y1: 312 },
+      { x0: 0, y0: 312, x1: largeur, y1: 430 },
     ];
   }
   const colonne = Math.min(largeur, 768);
