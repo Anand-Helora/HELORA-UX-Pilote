@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-import { BUDGETS, construireScene, doitRegenerer, estMobile, generateur } from "../src/ambiance.js";
+import { BUDGETS, avancerRoute, brancherRoutes, construireScene, doitRegenerer, estMobile, generateur, lireRoute, tracerItineraire } from "../src/ambiance.js";
 import { CLE_PREFERENCE, THEMES } from "../src/themes.js";
 
 const DESKTOP = { largeur: 1280, hauteur: 800 };
@@ -83,6 +83,136 @@ describe("construireScene : budgets (batterie, lisibilité)", () => {
       assert.ok(construireScene(cle, MOBILE).length < construireScene(cle, DESKTOP).length * 0.75, cle);
     }
     assert.ok(compter(construireScene("neural", MOBILE), "n-noeud") <= 12);
+  });
+});
+
+describe("Neural : itinéraires changeants (Issue #8)", () => {
+  // Petit réseau : 0-1, 1-2, 1-3, 2-3, 3-4, 4-0, 2-4 (aucune impasse).
+  const LIENS = [[0, 1], [1, 2], [1, 3], [2, 3], [3, 4], [4, 0], [2, 4]].map(([a, b]) => ({ a, b, longueur: 100 }));
+  const extremites = (l) => [LIENS[l].a, LIENS[l].b];
+
+  it("bifurque sur de vrais liens, sans demi-tour ni répétition immédiate (même au rebouclage)", () => {
+    for (let graine = 1; graine <= 40; graine++) {
+      const route = tracerItineraire(LIENS, 0, 0, { etapes: 8, alea: generateur(graine) });
+      assert.equal(route.length, 8);
+      assert.deepEqual([route[0].lien, route[0].de, route[0].vers], [0, 0, 1], "premier saut conservé");
+      route.forEach((saut, i) => {
+        assert.deepEqual(extremites(saut.lien).sort(), [saut.de, saut.vers].sort(), "saut le long d'un lien existant");
+        const suivant = route[(i + 1) % route.length];
+        assert.notEqual(suivant.lien, saut.lien, `graine ${graine} : même lien deux fois de suite`);
+        if (i + 1 < route.length) {
+          assert.equal(suivant.saut, false, "réseau sans impasse : pas de saut");
+          assert.equal(suivant.de, saut.vers, "repart du nœud d'arrivée (bifurcation)");
+        }
+      });
+      assert.ok(new Set(route.map((s) => s.lien)).size >= 4, `graine ${graine} : itinéraire trop répétitif`);
+    }
+  });
+
+  it("démarre un nouvel épisode ailleurs en cas d'impasse", () => {
+    const liens = [{ a: 0, b: 1 }, { a: 2, b: 3 }, { a: 4, b: 5 }];
+    const route = tracerItineraire(liens, 0, 0, { etapes: 4, alea: generateur(3) });
+    assert.equal(route.length, 4);
+    assert.equal(route[1].saut, true);
+    route.forEach((s, i) => assert.notEqual(route[(i + 1) % 4].lien, s.lien));
+  });
+
+  it("la scène Neural porte un itinéraire varié par impulsion, cohérent avec son premier tracé", () => {
+    for (const format of [DESKTOP, MOBILE]) {
+      const svg = construireScene("neural", format);
+      const tetes = [...svg.matchAll(/<path class="impulsion impulsion--tete [^>]*d="([^"]+)"[^>]*data-impulsion="(\d+)" data-route="([^"]+)"/g)];
+      assert.equal(tetes.length, compter(svg, "impulsion impulsion--tete"), "chaque impulsion a un itinéraire");
+      for (const [, d, cle, texte] of tetes) {
+        const route = lireRoute(texte);
+        assert.ok(route.length >= 4, `impulsion ${cle} : ${route.length} étapes`);
+        assert.equal(`M${route[0].x1} ${route[0].y1}L${route[0].x2} ${route[0].y2}`, d);
+        assert.ok(new Set(route.map((e) => `${e.x1},${e.y1},${e.x2},${e.y2}`)).size >= 3, "plusieurs liens différents");
+        assert.ok(route.every((e) => e.duree > 0.5 && e.duree < 12));
+        assert.match(svg, new RegExp(`<circle class="eclat[^>]*data-impulsion="${cle}"`), "éclat associé");
+        assert.match(svg, new RegExp(`<path class="impulsion impulsion--trainee [^>]*data-impulsion="${cle}"`), "traîne associée");
+      }
+    }
+    // Les autres thèmes ne sont pas concernés.
+    assert.doesNotMatch(construireScene("hybride", DESKTOP), /data-route/);
+  });
+
+  it("lireRoute ignore les étapes mal formées", () => {
+    assert.deepEqual(lireRoute("1 2 3 4 5;oups;6 7 8 9 1.5"), [
+      { x1: 1, y1: 2, x2: 3, y2: 4, duree: 5 },
+      { x1: 6, y1: 7, x2: 8, y2: 9, duree: 1.5 },
+    ]);
+    assert.deepEqual(lireRoute(undefined), []);
+  });
+
+  /** Éléments factices minimaux (attributs, style, animations). */
+  function element(attributs = {}) {
+    const animations = [{ currentTime: 1234 }];
+    return {
+      attributs: { ...attributs },
+      dataset: {},
+      styles: {},
+      animations,
+      setAttribute(n, v) { this.attributs[n] = v; },
+      getAttribute(n) { return this.attributs[n]; },
+      style: { setProperty(n, v) { this.proprietaire.styles[n] = v; } },
+      getAnimations() { return animations; },
+    };
+  }
+  function impulsionFactice() {
+    const [tete, trainee, eclat] = [element(), element(), element()];
+    for (const e of [tete, trainee, eclat]) e.style.proprietaire = e;
+    Object.assign(tete.dataset, { impulsion: "0", route: "0 0 10 0 2;10 0 10 10 3;10 10 0 0 4" });
+    tete.parentNode = { querySelector: (sel) => (sel.startsWith(".impulsion--trainee") ? trainee : sel.startsWith(".eclat") ? eclat : null) };
+    return { tete, trainee, eclat };
+  }
+
+  it("avancerRoute passe au lien suivant, relance les cycles à zéro et reboucle", () => {
+    const { tete, trainee, eclat } = impulsionFactice();
+    assert.equal(avancerRoute(tete), true);
+    assert.equal(tete.attributs.d, "M10 0L10 10");
+    assert.equal(trainee.attributs.d, "M10 0L10 10");
+    assert.deepEqual([eclat.attributs.cx, eclat.attributs.cy], ["10", "10"]);
+    assert.equal(tete.styles["--duree"], "3s");
+    assert.equal(tete.styles["--delai"], "0s");
+    for (const e of [tete, trainee, eclat]) assert.equal(e.animations[0].currentTime, 0);
+    avancerRoute(tete);
+    avancerRoute(tete);
+    assert.equal(tete.attributs.d, "M0 0L10 0", "retour à la première étape");
+  });
+
+  it("sans Web Animations, ne change rien (aucun saut possible)", () => {
+    const { tete } = impulsionFactice();
+    delete tete.getAnimations;
+    assert.equal(avancerRoute(tete), false);
+    assert.equal(tete.attributs.d, undefined);
+  });
+
+  it("arrêt / reprise : rien ne change sans fin de cycle, aucune minuterie ni boucle", () => {
+    const originaux = { setTimeout, setInterval, rAF: globalThis.requestAnimationFrame };
+    const interdit = () => assert.fail("aucune minuterie attendue");
+    globalThis.setTimeout = interdit;
+    globalThis.setInterval = interdit;
+    globalThis.requestAnimationFrame = interdit;
+    try {
+      let ecouteur;
+      brancherRoutes({ addEventListener: (type, f) => { assert.equal(type, "animationiteration"); ecouteur = f; } });
+      const { tete, trainee } = impulsionFactice();
+      tete.classList = { contains: (c) => c === "impulsion--tete" };
+      trainee.classList = { contains: () => false };
+      // En pause (ou onglet masqué, mouvement réduit) : aucun événement → aucun changement.
+      assert.equal(tete.attributs.d, undefined);
+      ecouteur({ target: trainee });
+      assert.equal(tete.attributs.d, undefined, "la traîne ne pilote pas l'itinéraire");
+      // Reprise : chaque fin de cycle avance d'une étape.
+      ecouteur({ target: tete });
+      assert.equal(tete.attributs.d, "M10 0L10 10");
+      ecouteur({ target: tete });
+      assert.equal(tete.attributs.d, "M10 10L0 0");
+    } finally {
+      globalThis.setTimeout = originaux.setTimeout;
+      globalThis.setInterval = originaux.setInterval;
+      globalThis.requestAnimationFrame = originaux.rAF;
+    }
   });
 });
 

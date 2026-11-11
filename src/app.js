@@ -17,7 +17,7 @@ import {
 } from "./tableau-de-bord.js";
 import { choisirFocusTableau, creerEtatFiche, lireOrigine, retourParHistorique } from "./navigation.js";
 import { ecrirePreference, estThemeValide, lirePreference, themeParCle } from "./themes.js";
-import { construireScene, doitRegenerer } from "./ambiance.js";
+import { brancherRoutes, construireScene, doitRegenerer } from "./ambiance.js";
 
 const main = document.getElementById("contenu");
 const annonce = document.getElementById("annonce");
@@ -287,6 +287,8 @@ function basculerAmbiance(bouton) {
  * ------------------------------------------------------------------------- */
 const racine = document.documentElement;
 const calqueAmbiance = document.querySelector(".ambiance");
+// Routes changeantes des impulsions Neural (une écoute déléguée, pas de boucle).
+brancherRoutes(calqueAmbiance);
 const mouvementReduit = window.matchMedia("(prefers-reduced-motion: reduce)");
 let tailleScene = null;
 let themeScene = null;

@@ -5,6 +5,11 @@
  * d'écran), animé uniquement par CSS (stroke-dashoffset, opacity, transform).
  * - aucune boucle JavaScript : pas de requestAnimationFrame, rien à arrêter ;
  *   la pause et `prefers-reduced-motion` se règlent en CSS ;
+ * - Neural : chaque impulsion suit un itinéraire pré-calculé de liens qui se
+ *   suivent (bifurcations) ; `brancherRoutes` passe au lien suivant à la fin
+ *   de chaque cycle CSS (événement `animationiteration`, tiret alors hors du
+ *   chemin, donc sans saut). Pause, onglet masqué ou mouvement réduit : plus
+ *   d'itération, donc plus aucun changement ;
  * - géométrie calculée en pixels réels : les vitesses (px/s) sont exactes et
  *   la composition s'adapte au format (mobile portrait / desktop paysage) ;
  * - tirage pseudo-aléatoire à graine fixe : même écran → même scène
@@ -130,21 +135,123 @@ function tirerLiens(alea, noeuds, zone, longueurMax) {
 /* ------------------------------------------------------------------------- */
 const FRACTION_ARRIVEE = (0.55 * 100) / 118;
 
-function htmlImpulsion(d, { duree, delai, fixe, classe = "" }) {
+function htmlImpulsion(d, { duree, delai, fixe, classe = "", attributs = "", attributsTete = "" }) {
   // Position statique (mouvement réduit) : front du tiret à `fixe` % du chemin,
   // ou hors du chemin si `fixe` est null.
   const oTete = fixe == null ? 150 : 3 - fixe;
   const oTrainee = fixe == null ? 150 : 18 - fixe;
   const temps = `--duree:${s2(duree)};--delai:${s2(delai)}`;
   return (
-    `<path class="impulsion impulsion--trainee ${classe}" d="${d}" pathLength="100" style="--o-fixe:${oTrainee};${temps}"/>` +
-    `<path class="impulsion impulsion--tete ${classe}" d="${d}" pathLength="100" style="--o-fixe:${oTete};${temps}"/>`
+    `<path class="impulsion impulsion--trainee ${classe}" d="${d}" pathLength="100" style="--o-fixe:${oTrainee};${temps}"${attributs}/>` +
+    `<path class="impulsion impulsion--tete ${classe}" d="${d}" pathLength="100" style="--o-fixe:${oTete};${temps}"${attributs}${attributsTete}/>`
   );
 }
 
 /** Halo qui s'allume quand une impulsion arrive (pic à 8 % de son cycle). */
-function htmlEclat(x, y, rayon, duree, delaiArrivee, fixe) {
-  return `<circle class="eclat${fixe ? " eclat--fixe" : ""}" cx="${r1(x)}" cy="${r1(y)}" r="${r1(rayon)}" style="--duree:${s2(duree)};--delai:${s2(delaiArrivee - 0.08 * duree)}"/>`;
+function htmlEclat(x, y, rayon, duree, delaiArrivee, fixe, attributs = "") {
+  return `<circle class="eclat${fixe ? " eclat--fixe" : ""}" cx="${r1(x)}" cy="${r1(y)}" r="${r1(rayon)}"${attributs} style="--duree:${s2(duree)};--delai:${s2(delaiArrivee - 0.08 * duree)}"/>`;
+}
+
+/* ------------------------------------------------------------------------- */
+/* Itinéraires Neural : marche sur les liens du réseau, sans demi-tour ni     */
+/* réutilisation récente d'un lien ; l'itinéraire est rejoué en boucle.       */
+/* ------------------------------------------------------------------------- */
+const ETAPES_ITINERAIRE = 8;
+const MEMOIRE_ITINERAIRE = 3;
+
+/**
+ * Itinéraire de `etapes` sauts à partir du lien `premier` parcouru de `de`
+ * vers l'autre extrémité. Chaque saut part du nœud d'arrivée du précédent
+ * (bifurcation) ; si le nœud est une impasse, un nouvel épisode démarre
+ * ailleurs (`saut: true`), invisible car le tiret est alors hors du chemin.
+ * Le dernier saut évite aussi le premier : pas de répétition au rebouclage.
+ * Renvoie [{ lien, de, vers, saut }] (indices dans `liens`).
+ */
+export function tracerItineraire(liens, premier, de, { etapes = ETAPES_ITINERAIRE, alea = Math.random, memoire = MEMOIRE_ITINERAIRE } = {}) {
+  const autre = (l, n) => (liens[l].a === n ? liens[l].b : liens[l].a);
+  const sauts = [{ lien: premier, de, vers: autre(premier, de), saut: false }];
+  const pioche = (liste) => liste[Math.floor(alea() * liste.length)];
+  while (sauts.length < etapes) {
+    const precedent = sauts[sauts.length - 1];
+    const recents = new Set(sauts.slice(-memoire).map((s) => s.lien));
+    if (sauts.length === etapes - 1) recents.add(premier);
+    const incidents = liens.map((_, i) => i).filter((i) => (liens[i].a === precedent.vers || liens[i].b === precedent.vers) && i !== precedent.lien);
+    const neufs = incidents.filter((i) => !sauts.some((s) => s.lien === i) && !recents.has(i));
+    const possibles = neufs.length ? neufs : incidents.filter((i) => !recents.has(i));
+    if (possibles.length) {
+      const lien = pioche(possibles);
+      sauts.push({ lien, de: precedent.vers, vers: autre(lien, precedent.vers), saut: false });
+      continue;
+    }
+    // Impasse : nouvel épisode sur un lien non récent (ou, à défaut, différent).
+    const ailleurs = liens.map((_, i) => i).filter((i) => !recents.has(i));
+    const lien = pioche(ailleurs.length ? ailleurs : liens.map((_, i) => i).filter((i) => i !== precedent.lien && i !== premier));
+    if (lien === undefined) break; // réseau d'un seul lien : itinéraire fixe
+    const depart = alea() < 0.5 ? liens[lien].a : liens[lien].b;
+    sauts.push({ lien, de: depart, vers: autre(lien, depart), saut: true });
+  }
+  return sauts;
+}
+
+/** « x1 y1 x2 y2 durée;… » → [{ x1, y1, x2, y2, duree }]. */
+export function lireRoute(texte) {
+  return String(texte ?? "")
+    .split(";")
+    .map((etape) => etape.trim().split(/\s+/).map(Number))
+    .filter((v) => v.length === 5 && v.every(Number.isFinite))
+    .map(([x1, y1, x2, y2, duree]) => ({ x1, y1, x2, y2, duree }));
+}
+
+const routesLues = new WeakMap();
+
+/**
+ * Passe l'impulsion `tete` (et sa traîne et son éclat, même `data-impulsion`)
+ * à l'étape suivante de son itinéraire, puis relance leurs cycles à zéro.
+ * Sans Web Animations (`getAnimations`), ne change rien : un changement de
+ * durée sans remise à zéro ferait sauter le tiret.
+ */
+export function avancerRoute(tete) {
+  if (typeof tete?.getAnimations !== "function" || !tete.dataset?.route) return false;
+  let route = routesLues.get(tete);
+  if (!route) {
+    route = lireRoute(tete.dataset.route);
+    routesLues.set(tete, route);
+  }
+  if (route.length < 2) return false;
+  const index = (Number(tete.dataset.etape ?? 0) + 1) % route.length;
+  const { x1, y1, x2, y2, duree } = route[index];
+  const scene = tete.parentNode;
+  const cle = tete.dataset.impulsion;
+  const trainee = scene?.querySelector(`.impulsion--trainee[data-impulsion="${cle}"]`);
+  const eclat = scene?.querySelector(`.eclat[data-impulsion="${cle}"]`);
+  tete.dataset.etape = String(index);
+  for (const chemin of [trainee, tete]) {
+    if (!chemin) continue;
+    chemin.setAttribute("d", `M${x1} ${y1}L${x2} ${y2}`);
+    chemin.style.setProperty("--duree", s2(duree));
+    chemin.style.setProperty("--delai", "0s");
+  }
+  if (eclat) {
+    eclat.setAttribute("cx", String(x2));
+    eclat.setAttribute("cy", String(y2));
+    eclat.style.setProperty("--duree", s2(duree));
+    eclat.style.setProperty("--delai", s2((FRACTION_ARRIVEE - 0.08) * duree));
+  }
+  for (const element of [trainee, tete, eclat]) {
+    for (const animation of element?.getAnimations?.() ?? []) animation.currentTime = 0;
+  }
+  return true;
+}
+
+/**
+ * Écoute (une seule fois, par délégation) la fin des cycles d'impulsion dans
+ * le calque `conteneur` : survit aux régénérations de scène (innerHTML).
+ */
+export function brancherRoutes(conteneur) {
+  conteneur.addEventListener("animationiteration", (evenement) => {
+    const cible = evenement.target;
+    if (cible?.classList?.contains("impulsion--tete") && cible.dataset?.route) avancerRoute(cible);
+  });
 }
 
 /* ------------------------------------------------------------------------- */
@@ -208,6 +315,9 @@ function sceneNeural(largeur, hauteur, mobile) {
     if (choisis.some((c) => c.a === l.a || c.b === l.b || c.a === l.b || c.b === l.a)) continue;
     choisis.push(l);
   }
+  // Itinéraires : liens lisibles (assez longs) hors zones calmes ; le
+  // premier saut est le lien choisi ci-dessus (composition initiale inchangée).
+  const routables = liens.filter((l) => l.longueur > 60 && !traverseZones(noeuds[l.a], noeuds[l.b], zones));
   const eclats = [];
   choisis.forEach((l, k) => {
     const sens = alea() < 0.5;
@@ -217,8 +327,16 @@ function sceneNeural(largeur, hauteur, mobile) {
     const duree = l.longueur / vitesse / FRACTION_ARRIVEE + 0.2;
     const delai = 0.2 + k * 0.45 + alea() * 0.2;
     const d = `M${r1(depart.x)} ${r1(depart.y)}L${r1(arrivee.x)} ${r1(arrivee.y)}`;
-    proche.push(htmlImpulsion(d, { duree, delai, fixe: k < 3 ? 40 + k * 15 : null }));
-    eclats.push(htmlEclat(arrivee.x, arrivee.y, mobile ? 14 : 26, duree, delai + FRACTION_ARRIVEE * duree, k === 0));
+    const premier = routables.findIndex((r) => r.a === l.a && r.b === l.b);
+    const route = tracerItineraire(routables, premier, sens ? l.a : l.b, { alea })
+      .map(({ lien, de, vers }) => {
+        const [p, q] = [noeuds[de], noeuds[vers]];
+        return `${r1(p.x)} ${r1(p.y)} ${r1(q.x)} ${r1(q.y)} ${Math.round((routables[lien].longueur / vitesse / FRACTION_ARRIVEE + 0.2) * 100) / 100}`;
+      })
+      .join(";");
+    const attributs = ` data-impulsion="${k}"`;
+    proche.push(htmlImpulsion(d, { duree, delai, fixe: k < 3 ? 40 + k * 15 : null, attributs, attributsTete: ` data-route="${route}"` }));
+    eclats.push(htmlEclat(arrivee.x, arrivee.y, mobile ? 14 : 26, duree, delai + FRACTION_ARRIVEE * duree, k === 0, attributs));
   });
   proche.push(...eclats);
 

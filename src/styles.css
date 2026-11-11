@@ -499,7 +499,9 @@ main {
   stroke: #7fdcf0;
   stroke-width: 2.6;
   stroke-opacity: 0.6;
-  stroke-dasharray: 0 0.001 12 87.999;
+  /* Traîne DERRIÈRE le satellite : l'animation `orbite` avance vers les
+     abscisses croissantes ; le tiret occupe [position − 12, position]. */
+  stroke-dasharray: 0 88 12 0;
 }
 
 .o-balayage {
