@@ -497,6 +497,24 @@ describe("V4 : quatre ambiances visuelles (Issue #5)", () => {
     await contexte.close();
   });
 
+  for (const viewport of [DESKTOP, MOBILE]) {
+    it(`lumière du bandeau : aucun débordement horizontal à aucun instant (${viewport.width} px, retour Codex PR #6)`, async () => {
+      const { contexte, page } = await pageAvecTheme("hybride", viewport);
+      await page.goto(`${base}#/`);
+      await page.waitForSelector(".sections");
+      for (const progression of [0, 0.25, 0.5, 0.59, 0.8, 0.99]) {
+        const ecart = await page.evaluate((t) => {
+          const animation = document.getAnimations().find((a) => a.animationName === "filet-lumiere");
+          animation.pause();
+          animation.currentTime = 400 + 6000 * t;
+          return document.documentElement.scrollWidth - window.innerWidth;
+        }, progression);
+        assert.ok(ecart <= 0, `débordement de ${ecart} px à ${progression * 100} % du cycle`);
+      }
+      await contexte.close();
+    });
+  }
+
   it("cibles tactiles ≥ 44 px sur mobile (sélecteur, pause, retour)", async () => {
     const { contexte, page } = await pageAvecTheme("hybride", MOBILE);
     await page.goto(`${base}#/equipement/EQ-DEMO-001`);
