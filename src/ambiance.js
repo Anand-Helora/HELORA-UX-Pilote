@@ -45,12 +45,28 @@ export function generateur(graine) {
 const r1 = (n) => Math.round(n * 10) / 10;
 const s2 = (n) => `${Math.round(n * 100) / 100}s`;
 
-/** Zone « calme » sous le grand titre : aucun nœud ni lien n'y passe. */
-function zoneCalme(largeur, mobile) {
-  return mobile
-    ? { x0: 0, y0: 175, x1: largeur, y1: 265 }
-    : { x0: 0, y0: 60, x1: Math.min(largeur, Math.max(0, (largeur - 1200) / 2) + 560), y1: 175 };
+/**
+ * Zones « calmes » (le décor étant fixe, elles visent les positions au repos) :
+ * [0] grand titre du tableau de bord — aucun nœud ni lien ;
+ * [1] en-tête de fiche (barre Retour + identifiant + titre) — liens fins
+ *     tolérés, mais ni nœud, ni impulsion, ni comète.
+ */
+function zonesCalmes(largeur, mobile) {
+  if (mobile) {
+    return [
+      { x0: 0, y0: 175, x1: largeur, y1: 265 },
+      { x0: 0, y0: 185, x1: largeur, y1: 410 },
+    ];
+  }
+  const colonne = Math.min(largeur, 768);
+  return [
+    { x0: 0, y0: 60, x1: Math.min(largeur, Math.max(0, (largeur - 1200) / 2) + 560), y1: 175 },
+    { x0: (largeur - colonne) / 2 - 24, y0: 110, x1: (largeur + colonne) / 2 + 24, y1: 310 },
+  ];
 }
+
+const dansZones = (x, y, zones, marge = 0) => zones.some((z) => dansZone(x, y, z, marge));
+const traverseZones = (a, b, zones) => zones.some((z) => segmentTraverse(a, b, z));
 
 function dansZone(x, y, zone, marge = 0) {
   return x > zone.x0 - marge && x < zone.x1 + marge && y > zone.y0 - marge && y < zone.y1 + marge;
@@ -128,13 +144,14 @@ function htmlEclat(x, y, rayon, duree, delaiArrivee, fixe) {
 }
 
 /* ------------------------------------------------------------------------- */
-/* Neural : maillage irrégulier, impulsions, liens qui respirent, parallaxe.  */
+/* Neural : maillage irrégulier, impulsions, liens qui respirent.             */
 /* ------------------------------------------------------------------------- */
 function sceneNeural(largeur, hauteur, mobile) {
   const budget = BUDGETS.neural[mobile ? "mobile" : "desktop"];
   const alea = generateur(0x5eed01 + Math.round(largeur / 40) * 7 + Math.round(hauteur / 40));
-  const zone = zoneCalme(largeur, mobile);
-  const noeuds = tirerNoeuds(alea, budget.noeuds, largeur, hauteur, (x, y) => !dansZone(x, y, zone, 14));
+  const zones = zonesCalmes(largeur, mobile);
+  const zone = zones[0];
+  const noeuds = tirerNoeuds(alea, budget.noeuds, largeur, hauteur, (x, y) => !dansZones(x, y, zones, 14));
   const pas = Math.sqrt((largeur * hauteur) / budget.noeuds);
   const liens = tirerLiens(alea, noeuds, zone, pas * 2.1);
 
@@ -142,13 +159,13 @@ function sceneNeural(largeur, hauteur, mobile) {
   parties.push(`<defs><radialGradient id="g-eclat"><stop offset="0" stop-color="#bffaf4" stop-opacity=".95"/><stop offset=".35" stop-color="#5fd6d0" stop-opacity=".45"/><stop offset="1" stop-color="#5fd6d0" stop-opacity="0"/></radialGradient>`);
   parties.push(`<radialGradient id="g-hub"><stop offset="0" stop-color="#5fd6d0" stop-opacity=".5"/><stop offset="1" stop-color="#5fd6d0" stop-opacity="0"/></radialGradient></defs>`);
 
-  // Plan lointain : poussière de petits nœuds (desktop), dérive inverse.
+  // Plan lointain : poussière de petits nœuds (desktop), fixe.
   if (budget.poussiere) {
     const loin = [];
     for (let i = 0; i < budget.poussiere; i++) {
       const x = alea() * largeur;
       const y = alea() * hauteur;
-      if (dansZone(x, y, zone)) continue;
+      if (dansZones(x, y, zones)) continue;
       loin.push(`<circle class="n-poussiere" cx="${r1(x)}" cy="${r1(y)}" r="${r1(0.8 + alea() * 1.1)}"/>`);
     }
     parties.push(`<g class="plan plan--lointain">${loin.join("")}</g>`);
@@ -179,7 +196,7 @@ function sceneNeural(largeur, hauteur, mobile) {
   // dès 0,2 s pour qu'au moins 3 traversées soient visibles avant 3 s.
   const longs = liens
     .map((l, i) => ({ ...l, i }))
-    .filter((l) => l.longueur > 90)
+    .filter((l) => l.longueur > 90 && !traverseZones(noeuds[l.a], noeuds[l.b], zones))
     .sort((u, v) => v.longueur - u.longueur);
   const choisis = [];
   for (const l of longs) {
@@ -219,8 +236,8 @@ const INCLINAISON = 18;
 function geometriePlanete(largeur, hauteur, mobile, { echelle = 1, cx, cy } = {}) {
   const base = mobile ? largeur * 0.5 : Math.max(largeur, hauteur) * 0.26;
   return {
-    cx: cx ?? (mobile ? largeur * 0.8 : largeur * 0.8),
-    cy: cy ?? (mobile ? hauteur * 0.86 : hauteur * 0.8),
+    cx: cx ?? (mobile ? largeur * 0.8 : largeur * 0.86),
+    cy: cy ?? (mobile ? hauteur * 0.86 : hauteur * 0.9),
     r: base * echelle,
   };
 }
@@ -311,7 +328,11 @@ function sceneOrbital(largeur, hauteur, mobile) {
   // satellite rapide (9 s par tour) — un mouvement net là où l'écran est libre.
   let lune = "";
   if (!mobile) {
-    const l = { cx: largeur * 0.09, cy: hauteur * 0.74, r: Math.max(largeur, hauteur) * 0.032 };
+    // Bande libre en haut à droite (visible sur le tableau de bord comme sur
+    // la fiche) quand l'écran est assez large ; sinon marge gauche basse.
+    const r = Math.min(42, Math.max(largeur, hauteur) * 0.032);
+    const large = largeur >= 1180;
+    const l = large ? { cx: largeur - Math.max(130, (largeur - 1200) / 2 + 40), cy: 150, r: r * 0.85 } : { cx: largeur * 0.09, cy: hauteur * 0.74, r };
     const style = ` style="--duree:9s;--delai:-6.3s;--o-fixe:-30"`;
     const anneau = (classe, st = "") => `<ellipse class="${classe}" rx="${r1(l.r * 2.3)}" ry="${r1(l.r * 2.3 * 0.36)}" pathLength="100"${st}/>`;
     const t = `translate(${r1(l.cx)} ${r1(l.cy)}) rotate(-24)`;
@@ -347,7 +368,8 @@ function pointEllipse(p, rx, ry, angle) {
 function sceneHybride(largeur, hauteur, mobile) {
   const budget = BUDGETS.hybride[mobile ? "mobile" : "desktop"];
   const alea = generateur(0x4b1d + Math.round(largeur / 40) * 3 + Math.round(hauteur / 40));
-  const zone = zoneCalme(largeur, mobile);
+  const zones = zonesCalmes(largeur, mobile);
+  const zone = zones[0];
   const p = geometriePlanete(largeur, hauteur, mobile, { echelle: mobile ? 0.62 : 0.72, cx: largeur * (mobile ? 0.78 : 0.84), cy: hauteur * (mobile ? 0.84 : 0.8) });
   const systeme = systemeOrbital(p, { orbites: budget.orbites, satellites: budget.satellites, prefixe: "h", balayage: false, alea });
   const rxExt = p.r * 1.9;
@@ -356,7 +378,7 @@ function sceneHybride(largeur, hauteur, mobile) {
   // Constellation : dense en haut à gauche, s'éclaircit vers la planète.
   const diagonale = Math.hypot(largeur, hauteur);
   const noeuds = tirerNoeuds(alea, budget.noeuds, largeur, hauteur, (x, y, a) => {
-    if (dansZone(x, y, zone, 14)) return false;
+    if (dansZones(x, y, zones, 14)) return false;
     if (Math.hypot(x - p.cx, y - p.cy) < rxExt * 1.05) return false;
     const proximite = Math.hypot(x - p.cx, y - p.cy) / diagonale; // 0 près de la planète
     return a() < 0.25 + proximite;
@@ -384,10 +406,13 @@ function sceneHybride(largeur, hauteur, mobile) {
   const amarres = noeuds
     .map((n, i) => ({ i, d: Math.hypot(n.x - p.cx, n.y - p.cy) }))
     .sort((u, v) => u.d - v.d);
+  const pris = new Set();
   angles.slice(0, budget.arrimages).forEach((angle, k) => {
     const cible = pointEllipse(p, rxExt, ryExt, angle);
-    const n = noeuds[amarres[k]?.i ?? 0];
-    if (!n) return;
+    const amarre = amarres.find((a) => !pris.has(a.i) && !traverseZones(noeuds[a.i], cible, zones));
+    if (!amarre || dansZones(cible.x, cible.y, zones)) return;
+    pris.add(amarre.i);
+    const n = noeuds[amarre.i];
     reseau.push(`<line class="n-lien n-lien--arrimage" x1="${r1(n.x)}" y1="${r1(n.y)}" x2="${r1(cible.x)}" y2="${r1(cible.y)}"/>`);
     // Sens de l'arc : celui qui prolonge la direction du lien.
     const suivant = pointEllipse(p, rxExt, ryExt, angle + 2);
@@ -412,7 +437,7 @@ function sceneHybride(largeur, hauteur, mobile) {
 
   // Impulsions internes au réseau.
   const internes = liens
-    .filter((l) => l.longueur > 90)
+    .filter((l) => l.longueur > 90 && !traverseZones(noeuds[l.a], noeuds[l.b], zones))
     .sort((u, v) => v.longueur - u.longueur)
     .slice(0, budget.impulsions);
   internes.forEach((l, k) => {

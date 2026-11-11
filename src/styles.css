@@ -81,16 +81,23 @@
 
 /* Neural : « Synapses » — quasi-noir turquoise, grammaire angulaire. */
 :root[data-theme="neural"] {
-  --fond: #020d11;
+  --fond: #010608;
   --fond-image:
-    radial-gradient(70% 60% at 15% 20%, rgba(0, 158, 153, 0.12) 0%, transparent 70%),
-    radial-gradient(60% 60% at 90% 85%, rgba(4, 69, 80, 0.55) 0%, transparent 70%),
-    linear-gradient(180deg, #031a20 0%, #020d11 100%);
-  --surface: #071f26;
-  --surface-haute: #0a2830;
-  --surface-voile: rgba(7, 31, 38, 0.84);
-  --bandeau-fond: #071f26;
-  --bandeau-verre: linear-gradient(180deg, rgba(10, 40, 48, 0.66), rgba(7, 31, 38, 0.55));
+    radial-gradient(60% 50% at 18% 22%, rgba(0, 158, 153, 0.1) 0%, transparent 70%),
+    radial-gradient(50% 50% at 88% 80%, rgba(0, 120, 120, 0.12) 0%, transparent 70%),
+    linear-gradient(180deg, #020c0f 0%, #010608 100%);
+  --surface: #061316;
+  --surface-haute: #08191d;
+  --surface-voile: rgba(6, 19, 22, 0.88);
+  --bandeau-fond: #061316;
+  --bandeau-verre: linear-gradient(180deg, rgba(8, 25, 29, 0.7), rgba(6, 19, 22, 0.6));
+  --accent-texte: #6ff0e6;
+  --focus: #6ff0e6;
+  --filet: rgba(111, 240, 230, 0.15);
+  --filet-fort: rgba(111, 240, 230, 0.5);
+  --rail-prioritaire: #6ff0e6;
+  --badge-bord: #6ff0e6;
+  --choix-bord: #6ff0e6;
   --rayon: 6px;
   --rayon-panneau: 8px;
   --rayon-commande: 6px;
@@ -115,7 +122,7 @@
     linear-gradient(180deg, #071426 0%, #040b17 100%);
   --surface: #0c1d2e;
   --surface-haute: #102638;
-  --surface-voile: rgba(12, 29, 46, 0.84);
+  --surface-voile: rgba(12, 29, 46, 0.9);
   --bandeau-fond: #0c1d2e;
   --bandeau-verre: linear-gradient(180deg, rgba(16, 38, 56, 0.66), rgba(12, 29, 46, 0.55));
   --texte-2: #a9c3d2;
@@ -249,11 +256,18 @@ a {
   box-shadow: 0 0 0 7px var(--halo-focus);
 }
 
+/* Titres focalisés par programme (changement de vue) : pas de cadre après un
+   clic souris ; au clavier, un indicateur net mais sobre. Le focus reste
+   annoncé par les lecteurs d'écran dans tous les cas. */
 [tabindex="-1"]:focus {
-  outline: 3px solid var(--focus);
-  outline-offset: 4px;
+  outline: none;
+}
+
+[tabindex="-1"]:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 6px;
   border-radius: 4px;
-  box-shadow: 0 0 0 8px var(--halo-focus);
+  box-shadow: none;
 }
 
 main[tabindex="-1"]:focus {
@@ -337,6 +351,16 @@ main {
   fill-opacity: 0.6;
 }
 
+/* Neural : réseau plus électrique (distinct d'Hybride). */
+.scene--neural .n-lien,
+.scene--neural .impulsion--trainee {
+  stroke: #6ff0e6;
+}
+
+.scene--neural .n-noeud {
+  fill: #6ff0e6;
+}
+
 .n-noeud--hub {
   fill: #bffaf4;
   fill-opacity: 0.85;
@@ -383,17 +407,10 @@ main {
   animation: eclat var(--duree) ease-out var(--delai) infinite backwards;
 }
 
-.plan--proche {
-  animation: derive 26s ease-in-out -6s infinite alternate;
-}
-
-.plan--lointain {
-  animation: derive-inverse 34s ease-in-out -10s infinite alternate;
-}
-
-.plan--lune {
-  animation: derive-inverse 30s ease-in-out infinite alternate;
-}
+/* Pas de dérive d'ensemble des plans : translater un groupe SVG entier force
+   à repeindre toute la scène à chaque image (fluidité divisée par ~2 sans
+   GPU, mesuré) pour un effet de quelques pixels à peine perceptible. Seuls
+   de petits éléments bougent : impulsions, éclats, satellites. */
 
 /* --- Orbites (Orbital, Hybride) ----------------------------------------- */
 .o-orbite {
@@ -572,24 +589,6 @@ main {
   }
   to {
     stroke-dashoffset: -100;
-  }
-}
-
-@keyframes derive {
-  from {
-    transform: translate3d(-8px, -5px, 0);
-  }
-  to {
-    transform: translate3d(8px, 6px, 0);
-  }
-}
-
-@keyframes derive-inverse {
-  from {
-    transform: translate3d(10px, 4px, 0);
-  }
-  to {
-    transform: translate3d(-10px, -6px, 0);
   }
 }
 
@@ -1449,16 +1448,6 @@ span.compteur {
 }
 
 /* ---------------------------------------------------------------------------
- * Mobile : décor allégé (batterie, lisibilité).
- * ------------------------------------------------------------------------- */
-@media (max-width: 599px) {
-  .plan--proche,
-  .plan--lointain {
-    animation: none;
-  }
-}
-
-/* ---------------------------------------------------------------------------
  * Desktop : bandeau sur une ligne, verre, sections en colonnes.
  * ------------------------------------------------------------------------- */
 @media (min-width: 960px) {
@@ -1602,9 +1591,11 @@ span.compteur {
 /* Verre dépoli (desktop) seulement si pris en charge ; repli opaque sinon. */
 @media (min-width: 960px) {
   @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    /* Verre limité au bandeau et aux 3 compteurs : sur les grandes sections,
+       le flou d'un fond animé divise la fluidité par deux (mesuré) et teinte
+       une colonne plus qu'une autre. Les sections restent voilées (≥ 0,82). */
     .bandeau,
-    .compteur,
-    .section {
+    .compteur {
       background: var(--deco-panneau), var(--bandeau-verre);
       -webkit-backdrop-filter: blur(16px) saturate(150%);
       backdrop-filter: blur(16px) saturate(150%);
@@ -1638,12 +1629,18 @@ span.compteur {
     animation: none !important;
   }
 
-  .impulsion,
+  /* Satellites et balayage figés à une position choisie ; les impulsions
+     (traits en plein vol) sont retirées : figées, elles passeraient pour des
+     artefacts. Restent la structure et les nœuds allumés. */
   .o-satellite,
   .o-aura,
   .o-trainee,
   .o-balayage {
     stroke-dashoffset: var(--o-fixe);
+  }
+
+  .impulsion {
+    visibility: hidden;
   }
 
   .eclat--fixe {

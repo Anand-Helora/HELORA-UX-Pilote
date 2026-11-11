@@ -456,14 +456,19 @@ describe("V4 : quatre ambiances visuelles (Issue #5)", () => {
       assert.ok((await page.locator(".ambiance svg > *").count()) > 0, "scène non vide");
       assert.equal(await page.locator('button[data-action="ambiance"]').isVisible(), false);
       if (cle !== "clair") {
-        // Au moins une impulsion ou un satellite figé à une position visible.
-        const fixes = await page.evaluate(() =>
-          [...document.querySelectorAll(".impulsion--tete, .o-satellite")].filter((e) => {
-            const o = parseFloat(getComputedStyle(e).strokeDashoffset);
-            return o < 0 && o > -100;
-          }).length,
-        );
-        assert.ok(fixes >= 1);
+        // Impulsions retirées (pas de trait figé en plein vol) ; structure
+        // conservée : nœud allumé ou satellite figé sur son orbite.
+        const etat = await page.evaluate(() => ({
+          impulsionsVisibles: [...document.querySelectorAll(".impulsion")].filter((e) => getComputedStyle(e).visibility !== "hidden").length,
+          reperes:
+            [...document.querySelectorAll(".eclat--fixe")].filter((e) => parseFloat(getComputedStyle(e).opacity) > 0.5).length +
+            [...document.querySelectorAll(".o-satellite")].filter((e) => {
+              const o = parseFloat(getComputedStyle(e).strokeDashoffset);
+              return o < 0 && o > -100;
+            }).length,
+        }));
+        assert.equal(etat.impulsionsVisibles, 0);
+        assert.ok(etat.reperes >= 1, "scène statique avec repères lumineux");
       }
       const autre = cle === "neural" ? "orbital" : "neural";
       await page.click(`label:has(input[value="${autre}"])`);
@@ -499,6 +504,42 @@ describe("V4 : quatre ambiances visuelles (Issue #5)", () => {
       }),
     );
     for (const [nom, l, h] of tailles) assert.ok(l >= 44 && h >= 44, `${nom} : ${l}×${h}`);
+    await contexte.close();
+  });
+
+  it("mobile : en ouvrant une fiche depuis une carte, la barre « Retour » est visible et le titre a le focus (revue UX B1)", async () => {
+    const { contexte, page } = await pageAvecTheme("hybride", MOBILE);
+    await page.goto(`${base}#/`);
+    await page.waitForSelector(".sections");
+    for (const mode of ["clic", "clavier"]) {
+      const carte = page.locator('a.carte__lien[data-id="EQ-DEMO-009"]');
+      if (mode === "clic") await carte.click();
+      else {
+        await carte.focus();
+        await page.keyboard.press("Enter");
+      }
+      await page.waitForSelector(".fiche");
+      const etat = await page.evaluate(() => ({
+        hautRetour: document.querySelector(".lien-retour").getBoundingClientRect().top,
+        focus: document.activeElement.tagName,
+      }));
+      assert.ok(etat.hautRetour >= 0, `${mode} : Retour hors écran (${etat.hautRetour})`);
+      assert.equal(etat.focus, "H1");
+      await page.click('a[data-action="retour"]');
+      await page.waitForSelector(".sections");
+      assert.equal(await focusActuel(page), "EQ-DEMO-009");
+    }
+    await contexte.close();
+  });
+
+  it("titre focalisé après un clic souris : pas de cadre de focus (revue UX I1)", async () => {
+    const { contexte, page } = await pageAvecTheme("neural");
+    await page.goto(`${base}#/`);
+    await page.waitForSelector(".sections");
+    await page.click('a.carte__lien[data-id="EQ-DEMO-001"]');
+    await page.waitForSelector(".fiche");
+    const style = await page.evaluate(() => getComputedStyle(document.activeElement).outlineStyle);
+    assert.equal(style, "none");
     await contexte.close();
   });
 

@@ -237,7 +237,12 @@ function afficher({ initial = false } = {}) {
     origineFicheAffichee = lireOrigine(history.state);
     rendreFiche(route.id);
     vueCourante = "fiche";
-    if (!initial) focaliser(main.querySelector("h1"));
+    if (!initial) {
+      // Haut de page (la barre « Retour » reste visible, y compris sur mobile),
+      // puis focus sur le titre sans défilement supplémentaire.
+      window.scrollTo({ top: 0, behavior: "instant" });
+      main.querySelector("h1")?.focus({ preventScroll: true });
+    }
     return;
   }
 
