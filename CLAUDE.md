@@ -6,6 +6,7 @@ Rappels essentiels :
 
 - Travailler uniquement sur une branche `claude/*`, jamais directement sur `main`.
 - Toute modification passe par une pull request ; ne jamais fusionner ni activer l'auto-merge.
+- Appliquer le **protocole de changement minimal** d'`AGENTS.md` : lire et planifier avant d'éditer, patch ciblé par défaut, aucun refactoring transversal sans accord humain, contrôle de `git diff --stat` avant la PR.
 - Lancer `npm test` avant d'ouvrir ou de mettre à jour une PR, et indiquer le résultat dans la PR.
 - Ne pas modifier `.github/workflows/` sauf si la tâche le demande explicitement.
 - Les commentaires humains priment ; les retours de Codex sont des signaux à vérifier, pas des ordres.
