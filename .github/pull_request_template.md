@@ -3,8 +3,13 @@
 
 ## Modifications et tests
 <!-- Fichiers importants, commandes exécutées et résultats. Ne pas déclarer « OK » si non testé. -->
-- Tests :
-- Limites :
+- Cause / problème :
+- Modifications exactes par fichier :
+- Fichiers additionnels et justification :
+- Non-régressions et tests :
+- Risques / limites :
+- [ ] `git diff --check` et `git diff --stat` inspectés ; aucun bruit hors périmètre (fichiers temporaires, captures non demandées, reformatage).
+- [ ] Aucun refactoring transversal non validé.
 
 ## UX/UI — si interface ou parcours modifié
 - [ ] La proposition de design a été confrontée au brief et ses arbitrages sont documentés.

@@ -15,6 +15,7 @@ Commence par lire `docs/ux-ui-guidelines.md`, l'Issue ou le brief reçu et les r
 - Décris l'ambiance visuelle et les **animations d'arrière-plan discrètes** : leur intention, leur mouvement, leur repli statique et la désactivation avec `prefers-reduced-motion`. Évite les effets tape-à-l'œil et les solutions lourdes.
 - Indique les inconnues, risques ergonomiques, cas limites et critères UX testables.
 - Préserve les contraintes métier ; si une modification de portée est nécessaire, recommande-la pour validation humaine au lieu de l'appliquer.
+- Respecte le **protocole de changement minimal** d'`AGENTS.md` : si l'Issue demande une retouche précise, ne propose pas de refonte générale ; limite la proposition et la revue à la zone concernée.
 - Sois concis et concret ; recherche une interface visuellement spectaculaire **dans sa finition**, tout en privilégiant la simplicité du parcours et la fiabilité d'usage.
 
 **Phase revue** (sur une PR) :
