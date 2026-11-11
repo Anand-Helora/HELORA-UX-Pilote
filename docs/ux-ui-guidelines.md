@@ -14,7 +14,7 @@ Avant le développement, consigner dans l'Issue (voir `.github/ISSUE_TEMPLATE/fo
 
 Si une information manque, le designer peut proposer une **hypothèse explicite**, mais ne la transforme pas en décision métier.
 
-## 2. Profil visuel de départ « HELORA web » (à valider par le projet)
+## 2. Direction visuelle de départ « HELORA Futuristic » (à valider par le projet)
 
 | Usage | Proposition initiale |
 | --- | --- |
@@ -25,13 +25,44 @@ Si une information manque, le designer peut proposer une **hypothèse explicite*
 | Typographie | Police système lisible ; ne pas imposer une police externe |
 | Ton éditorial | Français clair, libellés explicites, termes métier compréhensibles |
 
-Ces couleurs sont des **préférences initiales proposées**, pas une certification de conformité ni une preuve d'identité officielle. Vérifier les contrastes sur les vraies combinaisons : le turquoise `#009E99` ne doit pas servir par défaut de texte fin sur fond blanc. Prévoir les états hover/focus/disabled/error sans dépendre de la couleur seule. Ne jamais déduire du nom HELORA que toutes les applications doivent avoir la même ergonomie.
+La direction artistique recommandée pour les **nouvelles applications web HELORA** est **futuriste, premium et expressive** : une identité high-tech reconnaissable, sans compromettre le travail métier. Ces couleurs sont des **préférences initiales proposées**, pas une certification de conformité ni une preuve d'identité officielle. Vérifier les contrastes sur les vraies combinaisons : le turquoise `#009E99` ne doit pas servir par défaut de texte fin sur fond blanc. Prévoir les états hover/focus/disabled/error sans dépendre de la couleur seule. Ne jamais déduire du nom HELORA que toutes les applications doivent avoir la même ergonomie.
 
 **Profils d'usage** :
 - **Terrain / mobile** : actions primaires larges, saisie limitée, confirmation après scan ou modification, erreurs récupérables, accès rapide aux tâches fréquentes.
 - **Bureau / desktop** : filtres et tableaux lisibles, recherche, navigation clavier, actions groupées explicites avec confirmation si destructives.
 - **ARIA / interfaces spécialisées** : identité à préciser dans le brief, sans copier automatiquement la palette du profil HELORA.
 - **Revit / AutoCAD / DLL** : le présent template est web ; s'inspirer des principes UX, mais utiliser les conventions du logiciel hôte et des contrôles natifs. Ne pas appliquer un style CSS à une interface native.
+
+### 2.1. Langage visuel : moderne, audacieux, professionnel
+
+- **Direction créative** : interfaces nettement plus ambitieuses qu'un tableau de gestion classique, avec composition précise, hiérarchie typographique affirmée, volumes légers, profondeur, micro-détails et sensation de technologie avancée.
+- **Surfaces** : panneaux soignés, bordures lumineuses discrètes, superpositions légères, verre dépoli (`backdrop-filter`) si pertinent **avec repli opaque lisible** ; ne jamais réduire la lisibilité au nom de l'effet.
+- **Lumière et couleur** : conserver `#044550`, `#009E99` et `#E6F5F5` comme palette de base ; jouer sur les dégradés profonds, les halos turquoise à faible intensité et les accents lumineux sans dénaturer les valeurs métier.
+- **Composition** : espaces généreux, cartes contemporaines, iconographie cohérente, angles et alignements contrôlés. Une identité visuelle forte, **pas une imitation d'écran de science-fiction illisible**.
+- **Expérience** : soigner aussi les transitions entre écrans, les états de boutons, les retours de succès/erreur et la sensation de réactivité. Ne pas ajouter de faux indicateurs, de chiffres décoratifs ou de données imaginaires.
+- **Deux variantes possibles** : une présentation « futuriste expressive » pour tableaux de bord et démonstrations ; une présentation « futuriste opérationnelle » plus calme pour saisie terrain, procédures répétitives et interfaces critiques. Proposer la variante adaptée et expliquer le choix.
+
+### 2.2. Ambiances animées en arrière-plan
+
+Pour les nouvelles interfaces web, **proposer par défaut une ambiance visuelle légèrement animée**, lorsque le contexte, les performances et les préférences de l'utilisateur le permettent. Exemples appropriés :
+- dégradé ou halo turquoise très lent et peu contrasté derrière le contenu ;
+- grille technique discrète avec mouvement quasi imperceptible ;
+- quelques points lumineux ou lignes de flux très sobres, sans ressembler à de vraies alertes ;
+- micro-interactions sur les commandes : apparition maîtrisée, focus, confirmation, transition de panneau.
+
+**Contraintes impératives :**
+- L'animation est **décorative**, dans un calque non interactif ; elle ne capte jamais le pointeur, le focus ni les lecteurs d'écran et ne recouvre aucun message.
+- Prévoir un **rendu fixe complet**, notamment avec `@media (prefers-reduced-motion: reduce)`. Ne pas déclencher automatiquement d'effets clignotants, d'éclairs ou de mouvements rapides.
+- Favoriser CSS et des effets de `transform`/`opacity` modérés ; limiter les particules, éviter un rendu Canvas continu ou une dépendance 3D sans justification. Vérifier fluidité, batterie et fonctionnement sur mobile.
+- Préserver les contrastes réels en présence de l'animation ; aucun texte important sur un arrière-plan mouvant dont le contraste fluctue.
+- En cas de matériel ancien, d'usage terrain difficile, d'interface critique ou de préférence de réduction du mouvement, **la version statique prime**.
+- Ne pas simuler d'urgence, d'alarme, de surveillance ou d'état d'équipement par une animation décorative.
+
+### 2.3. Exigences dans la conception et la revue
+
+Avant développement, le designer doit proposer un **concept visuel concret** avec palette, organisation des surfaces, typographie, effets lumineux, ambiance animée (ou justification d'absence) et une alternative plus sobre. Décrire le mouvement : élément animé, raison, intensité, durée indicative et comportement en mouvement réduit. Le concept est **soumis à validation humaine**.
+
+Après développement, contrôler le rendu mobile et desktop, le contraste dans les zones animées, `prefers-reduced-motion`, la navigation au clavier, les performances perçues et le **repli sans animation**. Indiquer explicitement les vérifications non réalisées. Si une capture fixe est disponible, elle ne permet pas de valider le mouvement lui-même.
 
 ## 3. Principes ergonomiques à vérifier
 
@@ -41,7 +72,7 @@ Ces couleurs sont des **préférences initiales proposées**, pas une certificat
 4. **États complets** : initial, chargement, vide, succès, échec, hors connexion si concerné ; blocage et solution visibles.
 5. **Prévention des erreurs** : validation pertinente, conservation de la saisie après erreur, confirmation pour opérations sensibles, aucune suppression silencieuse.
 6. **Responsive** : définir le viewport principal puis vérifier au minimum un format étroit et un format desktop si l'application cible les deux.
-7. **Cohérence** : mêmes intitulés, composants, espacements et conventions partout ; éviter les animations gratuites, les dépendances externes et la complexité visuelle superflue.
+7. **Cohérence** : mêmes intitulés, composants, espacements et conventions partout ; les effets futuristes et animations d'ambiance doivent servir une identité cohérente, jamais gêner la tâche, l'accessibilité ou la maintenance.
 8. **Sobriété technique** : pas de framework, package, police distante ou librairie ajoutée sans justification et accord sur le coût de maintenance.
 
 ## 4. Intervention du designer — deux points de contrôle

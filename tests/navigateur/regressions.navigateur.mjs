@@ -193,6 +193,36 @@ describe("texte agrandi à 200 % en 360 px (retour Codex n° 2)", () => {
     });
   }
 
+  for (const largeur of [960, 1280]) {
+    it(`desktop ${largeur} px à 200 % : rien ne déborde ni ne se chevauche dans les compteurs (retour Codex PR #4)`, async () => {
+      const { page } = await nouvellePage({ width: largeur, height: 800 });
+      await page.goto(`${base}#/`);
+      await page.waitForSelector(".sections");
+      await page.addStyleTag({ content: "html { font-size: 200%; }" });
+      assert.ok((await debordement(page)) <= 0, `débordement de ${await debordement(page)} px`);
+      const defauts = await page.$$eval("a.compteur", (compteurs) =>
+        compteurs.flatMap((compteur) => {
+          const boite = compteur.getBoundingClientRect();
+          const parties = [".compteur__nombre", ".compteur__libelle", ".compteur__invite"]
+            .map((s) => compteur.querySelector(s))
+            .filter((e) => e && getComputedStyle(e).display !== "none")
+            .map((e) => [e.className, e.getBoundingClientRect()]);
+          const erreurs = [];
+          for (const [nom, r] of parties) {
+            if (r.left < boite.left - 0.5 || r.right > boite.right + 0.5 || r.bottom > boite.bottom + 0.5) erreurs.push(`${nom} hors du compteur`);
+          }
+          for (let i = 0; i < parties.length; i++) for (let j = i + 1; j < parties.length; j++) {
+            const [na, a] = parties[i], [nb, b] = parties[j];
+            if (!(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom)) erreurs.push(`${na} chevauche ${nb}`);
+          }
+          return erreurs;
+        }),
+      );
+      assert.deepEqual(defauts, []);
+      await page.close();
+    });
+  }
+
   it("la fiche garde libellé et valeur côte à côte à taille normale", async () => {
     const { page } = await nouvellePage();
     await page.goto(`${base}#/equipement/EQ-DEMO-010`);
@@ -202,5 +232,58 @@ describe("texte agrandi à 200 % en 360 px (retour Codex n° 2)", () => {
     );
     assert.ok(memeLigne);
     await page.close();
+  });
+});
+
+describe("ambiance animée décorative (Issue #3)", () => {
+  const etatsAmbiance = (page) =>
+    page.evaluate(() => document.querySelector(".ambiance").getAnimations({ subtree: true }).map((a) => a.playState));
+
+  it("est non interactive, masquée aux technologies d'assistance et animée par défaut", async () => {
+    const { page, erreurs } = await nouvellePage({ width: 1280, height: 800 });
+    await page.goto(`${base}#/`);
+    await page.waitForSelector(".sections");
+    const calque = await page.evaluate(() => {
+      const a = document.querySelector(".ambiance");
+      return { hidden: a.getAttribute("aria-hidden"), pe: getComputedStyle(a).pointerEvents, focalisables: a.querySelectorAll("a, button, [tabindex]").length };
+    });
+    assert.deepEqual(calque, { hidden: "true", pe: "none", focalisables: 0 });
+    const etats = await etatsAmbiance(page);
+    assert.ok(etats.length >= 2 && etats.every((e) => e === "running"), String(etats));
+    assert.deepEqual(erreurs, []);
+    await page.close();
+  });
+
+  it("se met en pause et repart au clavier avec l'interrupteur « Fond animé »", async () => {
+    const { page } = await nouvellePage();
+    await page.goto(`${base}#/`);
+    await page.waitForSelector(".sections");
+    const bouton = page.locator('button[data-action="ambiance"]');
+    assert.equal(await bouton.getAttribute("aria-pressed"), "true");
+    await bouton.focus();
+    await page.keyboard.press("Enter");
+    assert.equal(await bouton.getAttribute("aria-pressed"), "false");
+    assert.ok((await etatsAmbiance(page)).every((e) => e === "paused"));
+    // L'état survit à la navigation interne (bouton hors de <main>).
+    await page.click('a.carte__lien[data-id="EQ-DEMO-003"]');
+    await page.waitForSelector(".fiche");
+    assert.ok((await etatsAmbiance(page)).every((e) => e === "paused"));
+    await page.keyboard.press("Shift+Tab"); // revient dans le bandeau
+    await bouton.focus();
+    await page.keyboard.press("Space");
+    assert.equal(await bouton.getAttribute("aria-pressed"), "true");
+    assert.ok((await etatsAmbiance(page)).every((e) => e === "running"));
+    await page.close();
+  });
+
+  it("en mouvement réduit : aucune animation et interrupteur masqué", async () => {
+    const contexte = await navigateur.newContext({ viewport: MOBILE, reducedMotion: "reduce" });
+    const page = await contexte.newPage();
+    await page.goto(`${base}#/`);
+    await page.waitForSelector(".sections");
+    await page.waitForTimeout(400);
+    assert.equal(await page.evaluate(() => document.getAnimations().length), 0);
+    assert.equal(await page.locator('button[data-action="ambiance"]').isVisible(), false);
+    await contexte.close();
   });
 });

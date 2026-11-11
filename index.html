@@ -3,23 +3,38 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#031e24" />
     <title>Tableau de bord · Équipements fictifs · Démo</title>
     <meta name="description" content="Démonstration UX/UI : tableau de bord d'équipements techniques entièrement fictifs." />
     <link rel="stylesheet" href="src/styles.css" />
     <script type="module" src="src/app.js"></script>
   </head>
   <body>
+    <!-- Ambiance décorative (HELORA Futuristic) : hors de <main>, jamais réécrite,
+         non interactive et masquée aux technologies d'assistance. -->
+    <div class="ambiance" aria-hidden="true">
+      <span class="ambiance__halo ambiance__halo--a"></span>
+      <span class="ambiance__halo ambiance__halo--b"></span>
+      <span class="ambiance__grille"></span>
+      <span class="ambiance__flux ambiance__flux--1"></span>
+      <span class="ambiance__flux ambiance__flux--2"></span>
+    </div>
     <a class="lien-evitement" href="#contenu">Aller au contenu</a>
     <header class="bandeau">
       <p class="bandeau__titre">Équipements techniques</p>
       <p class="bandeau__mention">Démonstration · données entièrement fictives</p>
+      <button type="button" class="bascule-ambiance" data-action="ambiance" aria-pressed="true">
+        <span class="bascule-ambiance__libelle">Fond animé</span>
+        <span class="bascule-ambiance__etat" aria-hidden="true">activé</span>
+      </button>
     </header>
     <!-- Région d'annonce persistante : seul son texte change (lecteurs d'écran). -->
     <p id="annonce" class="visuellement-masque" role="status" aria-live="polite"></p>
     <main id="contenu" tabindex="-1" aria-busy="true">
       <!-- État initial avant exécution du script : chargement. -->
       <h1>Tableau de bord</h1>
-      <p class="message">Chargement des équipements…</p>
+      <p class="message message--chargement">Chargement des équipements…</p>
       <noscript>
         <p class="message message--erreur">Cette démonstration nécessite JavaScript.</p>
       </noscript>

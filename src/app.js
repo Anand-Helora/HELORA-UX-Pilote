@@ -82,8 +82,8 @@ function htmlCompteurs(compteurs) {
         compteurs ? `${echapper(categorie.titre)} : ${nombre} ${unite}` : `${echapper(categorie.titre)} : en cours de chargement`
       }</span>`;
     return compteurs
-      ? `<li><a class="compteur" href="#${categorie.ancre}" data-ancre="${categorie.ancre}">${contenu}</a></li>`
-      : `<li><span class="compteur">${contenu}</span></li>`;
+      ? `<li><a class="compteur compteur--${categorie.cle}" href="#${categorie.ancre}" data-ancre="${categorie.ancre}">${contenu}<span class="compteur__invite" aria-hidden="true">Voir la liste <span>↓</span></span></a></li>`
+      : `<li><span class="compteur compteur--${categorie.cle}">${contenu}</span></li>`;
   }).join("");
   return `<nav aria-label="Résumé par catégorie"><ul class="compteurs">${elements}</ul></nav>`;
 }
@@ -126,7 +126,7 @@ function rendreChargement() {
   main.innerHTML = `
     <h1 tabindex="-1">Tableau de bord</h1>
     ${htmlCompteurs(null)}
-    <p class="message">Chargement des équipements…</p>`;
+    <p class="message message--chargement">Chargement des équipements…</p>`;
   annoncer("Chargement des équipements…");
 }
 
@@ -190,7 +190,7 @@ function rendreFiche(id) {
       <p class="fiche__id">${echapper(equipement.id)}</p>
       <h1 tabindex="-1">${echapper(equipement.designation)}</h1>
       <dl class="fiche__details">
-        <div class="fiche__ligne"><dt>Identifiant</dt><dd>${echapper(equipement.id)}</dd></div>
+        <div class="fiche__ligne"><dt>Identifiant</dt><dd class="valeur-mono">${echapper(equipement.id)}</dd></div>
         <div class="fiche__ligne"><dt>Désignation</dt><dd>${echapper(equipement.designation)}</dd></div>
         <div class="fiche__ligne"><dt>Catégorie</dt><dd>${badge(categorie)}</dd></div>
         <div class="fiche__ligne"><dt>Statut</dt><dd>${echapper(equipement.statut)}</dd></div>
@@ -256,11 +256,29 @@ function afficher({ initial = false } = {}) {
   }
 }
 
+/**
+ * Met en pause / relance l'ambiance animée (décorative). État en mémoire
+ * seulement (aucun stockage persistant) ; sans objet en mouvement réduit,
+ * où l'interrupteur est masqué et l'ambiance déjà figée.
+ */
+function basculerAmbiance(bouton) {
+  const active = bouton.getAttribute("aria-pressed") === "true";
+  bouton.setAttribute("aria-pressed", String(!active));
+  document.documentElement.classList.toggle("ambiance-en-pause", active);
+  bouton.querySelector(".bascule-ambiance__etat").textContent = active ? "en pause" : "activé";
+}
+
 document.addEventListener("click", (evenement) => {
   if (evenement.defaultPrevented || evenement.button !== 0) return;
   if (evenement.metaKey || evenement.ctrlKey || evenement.shiftKey || evenement.altKey) return;
   const cible = evenement.target instanceof Element ? evenement.target : null;
   if (!cible) return;
+
+  const bascule = cible.closest('button[data-action="ambiance"]');
+  if (bascule) {
+    basculerAmbiance(bascule);
+    return;
+  }
 
   if (cible.closest("a.lien-evitement")) {
     // Lien d'évitement : déplacer le focus (visible) sans changer de vue.

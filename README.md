@@ -35,7 +35,8 @@ Démonstration **entièrement fictive** : aucune donnée, aucun lieu ni aucune r
 | `src/navigation.js` | État de navigation porté par l'historique (carte d'origine d'une fiche) |
 | `tests/tableau-de-bord.test.js`, `tests/navigation.test.js` | Tests `node --test` |
 | `tests/navigateur/` | Tests navigateur optionnels (`npm run test:navigateur`) |
-| `docs/captures/issue-1/` | Captures navigateur de la démo |
+| `docs/captures/issue-1/` | Captures navigateur de la démo (première version, thème clair) |
+| `docs/captures/issue-3/` | Captures et vidéos de la direction « HELORA Futuristic » (concept « Abysse ») |
 
 ### Ouvrir l'application localement
 

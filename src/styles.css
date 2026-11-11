@@ -1,23 +1,50 @@
 /*
- * Profil « HELORA web » (proposition initiale, non officielle) :
- * primaire #044550, accent #009E99, fond de mise en évidence #E6F5F5.
- * L'accent n'est jamais utilisé pour du texte ; seulement pour des bordures.
+ * Direction « HELORA Futuristic » — concept « Abysse » (pilote, à valider).
+ *
+ * Console de supervision vue de nuit : fond profond dérivé de #044550,
+ * lumière turquoise portée par les surfaces, texte clair #E6F5F5.
+ * Couleurs de base conservées : #044550, #009E99, #E6F5F5. Extensions
+ * proposées (à valider par l'humain) : #5FD6D0 (turquoise lumineux, focus et
+ * accents), #FFB4A8 (erreur, corail clair), neutres sombres ci-dessous.
+ *
+ * Règles de lisibilité :
+ * - #009E99 n'est jamais utilisé pour du texte (bordures, halos, fond du bouton) ;
+ * - tout texte petit ou dense est posé sur une surface opaque (ou du verre
+ *   avec repli opaque) ; seuls les grands titres reposent sur le fond animé ;
+ * - l'ambiance animée n'utilise que transform/opacity, plafond d'alpha des
+ *   halos : 0,22 (pire cas de contraste mesuré dans la PR).
  */
 :root {
+  color-scheme: dark;
+
+  --fond-abysse: #031e24;
+  --fond-profond: #021519;
+  --surface: #0a2e35;
+  --surface-haute: #0d353d;
   --primaire: #044550;
   --accent: #009e99;
-  --fond-evidence: #e6f5f5;
-  --fond: #ffffff;
-  --fond-page: #f5f7f7;
-  --texte: #1a2426;
-  --texte-secondaire: #4f5b5d;
-  --bordure: #c9d3d4;
-  --erreur: #9b1c1c;
-  --rayon: 8px;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --accent-lumineux: #5fd6d0;
+  --clair: #e6f5f5;
+  --texte: #e6f5f5;
+  --texte-secondaire: #a9c4c6;
+  --filet: rgba(95, 214, 208, 0.16);
+  --filet-fort: rgba(95, 214, 208, 0.5);
+  --reflet: rgba(230, 245, 245, 0.07);
+  --erreur: #ffb4a8;
+
+  --rayon-panneau: 14px;
+  --rayon: 10px;
+  --ombre: 0 12px 32px -12px rgba(0, 0, 0, 0.55);
+  --lueur: 0 0 0 1px rgba(95, 214, 208, 0.35), 0 8px 28px -10px rgba(0, 158, 153, 0.45);
+  --transition: 160ms ease-out;
+
+  --police: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --police-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  font-family: var(--police);
   line-height: 1.5;
   color: var(--texte);
-  background: var(--fond-page);
+  background: var(--fond-profond);
 }
 
 *,
@@ -27,8 +54,14 @@
 }
 
 body {
+  min-height: 100vh;
   margin: 0;
-  background: var(--fond-page);
+  /* Fond statique : lumière profonde en haut à gauche, vignettage en bas. */
+  background:
+    radial-gradient(120% 80% at 0% 0%, rgba(4, 69, 80, 0.85) 0%, transparent 60%),
+    radial-gradient(90% 70% at 100% 100%, rgba(4, 69, 80, 0.45) 0%, transparent 65%),
+    linear-gradient(180deg, var(--fond-abysse) 0%, var(--fond-profond) 100%);
+  background-attachment: fixed;
 }
 
 h1,
@@ -41,29 +74,51 @@ dd {
   margin: 0;
 }
 
+/* Un mot long (« démonstration ») ne doit jamais déborder avec un texte agrandi
+   à 200 %. Césure réservée au grand titre h1 ; ailleurs, coupure seulement si
+   un mot ne tient pas (la césure automatique hacherait les désignations). */
+h2,
+h3,
+.carte__designation,
+.fiche__details dd {
+  overflow-wrap: anywhere;
+}
+
+h1 {
+  overflow-wrap: break-word;
+  -webkit-hyphens: auto;
+  hyphens: auto;
+}
+
 ul {
   padding: 0;
   list-style: none;
 }
 
 a {
-  color: var(--primaire);
+  color: var(--accent-lumineux);
 }
 
-/* Focus visible et cohérent sur tout élément focalisable. */
+/* ---------------------------------------------------------------------------
+ * Focus : anneau turquoise lumineux (≥ 8:1 sur fond et surfaces) + halo doux.
+ * Le focus repose toujours sur `outline` (conservé en couleurs forcées).
+ * ------------------------------------------------------------------------- */
 :focus-visible {
-  outline: 3px solid var(--primaire);
-  outline-offset: 2px;
+  outline: 3px solid var(--accent-lumineux);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 7px rgba(95, 214, 208, 0.22);
 }
 
-/* Titres ciblés par programme (tabindex="-1") : focus visible aussi. */
 [tabindex="-1"]:focus {
-  outline: 3px solid var(--primaire);
+  outline: 3px solid var(--accent-lumineux);
   outline-offset: 4px;
+  border-radius: 4px;
+  box-shadow: 0 0 0 8px rgba(95, 214, 208, 0.18);
 }
 
 main[tabindex="-1"]:focus {
   outline: none;
+  box-shadow: none;
 }
 
 .visuellement-masque {
@@ -84,7 +139,9 @@ main[tabindex="-1"]:focus {
   top: -100px;
   z-index: 10;
   padding: 12px 16px;
-  background: var(--fond);
+  color: var(--texte);
+  background: var(--surface);
+  border: 1px solid var(--filet-fort);
   border-radius: var(--rayon);
 }
 
@@ -92,121 +149,472 @@ main[tabindex="-1"]:focus {
   top: 8px;
 }
 
-/* Bandeau démonstration */
+/* ---------------------------------------------------------------------------
+ * Ambiance animée (décorative) : calque fixe sous le contenu, non interactif,
+ * masqué aux technologies d'assistance (aria-hidden dans index.html).
+ * 5 éléments animés au plus, uniquement transform/opacity, durées ≥ 26 s.
+ * ------------------------------------------------------------------------- */
+.ambiance {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+}
+
+.bandeau,
+main {
+  position: relative;
+  z-index: 1;
+}
+
+.ambiance__halo {
+  position: absolute;
+  width: 70vmax;
+  height: 70vmax;
+  border-radius: 50%;
+  will-change: transform, opacity;
+}
+
+/* Halo A : turquoise, en haut à gauche. Alpha plafonné à 0,22. */
+.ambiance__halo--a {
+  top: -32vmax;
+  left: -24vmax;
+  background: radial-gradient(circle, rgba(0, 158, 153, 0.22) 0%, rgba(0, 158, 153, 0.08) 38%, transparent 65%);
+  opacity: 0.55;
+  animation: derive-a 38s ease-in-out infinite alternate;
+}
+
+/* Halo B : vert profond éclairci, en bas à droite. */
+.ambiance__halo--b {
+  right: -26vmax;
+  bottom: -34vmax;
+  background: radial-gradient(circle, rgba(4, 69, 80, 0.7) 0%, rgba(0, 158, 153, 0.08) 45%, transparent 66%);
+  opacity: 0.5;
+  animation: derive-b 52s ease-in-out -20s infinite alternate;
+}
+
+/* Grille technique quasi imperceptible, estompée vers les bords. */
+.ambiance__grille {
+  position: absolute;
+  inset: -48px 0 0 0;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(230, 245, 245, 0.035) 0 1px, transparent 1px 48px),
+    repeating-linear-gradient(90deg, rgba(230, 245, 245, 0.035) 0 1px, transparent 1px 48px);
+  -webkit-mask-image: radial-gradient(ellipse 75% 65% at 50% 40%, #000 0%, transparent 100%);
+  mask-image: radial-gradient(ellipse 75% 65% at 50% 40%, #000 0%, transparent 100%);
+  will-change: transform;
+  animation: grille 90s linear infinite;
+}
+
+/* Lignes de flux : un trait fin traverse lentement l'écran, puis une pause. */
+.ambiance__flux {
+  position: absolute;
+  left: 0;
+  width: 30vw;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(95, 214, 208, 0.25), transparent);
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+/* Vitesse ≤ ~55 px/s à 1280 px (traversée de 130 vw en 65 % du cycle). */
+.ambiance__flux--1 {
+  top: 15%;
+  animation: flux 48s linear 3s infinite;
+}
+
+.ambiance__flux--2 {
+  top: 92%;
+  animation: flux 60s linear 20s infinite;
+}
+
+@keyframes derive-a {
+  from {
+    transform: translate3d(-6vw, -4vh, 0) scale(1);
+    opacity: 0.55;
+  }
+  to {
+    transform: translate3d(6vw, 5vh, 0) scale(1.12);
+    opacity: 0.8;
+  }
+}
+
+@keyframes derive-b {
+  from {
+    transform: translate3d(5vw, 4vh, 0) scale(1.08);
+    opacity: 0.5;
+  }
+  to {
+    transform: translate3d(-5vw, -5vh, 0) scale(1);
+    opacity: 0.7;
+  }
+}
+
+@keyframes grille {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(0, 48px, 0);
+  }
+}
+
+/* Traversée sur ~65 % du cycle, puis pause (opacité nulle). */
+@keyframes flux {
+  0% {
+    transform: translate3d(-30vw, 0, 0);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  55% {
+    opacity: 1;
+  }
+  65% {
+    transform: translate3d(100vw, 0, 0);
+    opacity: 0;
+  }
+  100% {
+    transform: translate3d(100vw, 0, 0);
+    opacity: 0;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Bandeau : opaque sur mobile, verre sur desktop (voir @media plus bas).
+ * ------------------------------------------------------------------------- */
 .bandeau {
-  padding: 10px 16px;
-  background: var(--primaire);
-  color: #ffffff;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 16px;
+  padding: 12px 16px;
+  color: var(--texte);
+  background: var(--surface);
+  box-shadow: inset 0 -1px 0 var(--filet);
+}
+
+/* Filet lumineux statique sous le bandeau. */
+.bandeau::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent) 50%, transparent);
+  pointer-events: none;
 }
 
 .bandeau__titre {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1rem;
   font-weight: 700;
-  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+}
+
+/* Marque décorative : anneau turquoise et point central (statiques). */
+.bandeau__titre::before {
+  content: "";
+  flex: none;
+  width: 0.875rem;
+  height: 0.875rem;
+  border: 2px solid var(--accent-lumineux);
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--accent-lumineux) 0 2px, transparent 3px);
+  box-shadow: 0 0 12px rgba(95, 214, 208, 0.45);
+}
+
+.bandeau__titre {
+  order: 1;
 }
 
 .bandeau__mention {
-  font-size: 0.875rem;
+  order: 3;
+  flex-basis: 100%;
+  font-size: 0.8125rem;
+  color: var(--texte-secondaire);
+}
+
+/* Interrupteur de l'ambiance animée (WCAG 2.2.2 : mettre en pause). */
+.bascule-ambiance {
+  order: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin-left: auto;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--texte);
+  background: transparent;
+  border: 1px solid var(--filet-fort);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: border-color var(--transition), background-color var(--transition);
+}
+
+.bascule-ambiance__etat {
+  color: var(--accent-lumineux);
+}
+
+/* Témoin : deux barres (pause possible) ou triangle (lecture possible). */
+.bascule-ambiance::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  background: linear-gradient(90deg, currentColor 0 35%, transparent 35% 65%, currentColor 65%);
+}
+
+.bascule-ambiance[aria-pressed="false"]::before {
+  background: currentColor;
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+
+.bascule-ambiance[aria-pressed="false"] .bascule-ambiance__etat {
+  color: var(--texte-secondaire);
+}
+
+/* Mobile : bouton rond compact (icône seule, 44 × 44 px) ; le libellé reste
+   le nom accessible (masqué visuellement), l'état est porté par aria-pressed. */
+@media (max-width: 599px) {
+  .bascule-ambiance {
+    justify-content: center;
+    width: 44px;
+    padding: 0;
+  }
+
+  .bascule-ambiance__libelle {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .bascule-ambiance__etat {
+    display: none;
+  }
+}
+
+/* Ambiance en pause : figée sur place, sans saut. */
+.ambiance-en-pause .ambiance * {
+  animation-play-state: paused !important;
 }
 
 main {
   display: block;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 16px;
+  padding: 20px 16px 40px;
 }
 
 h1 {
-  font-size: 1.375rem;
-  line-height: 1.25;
-  color: var(--primaire);
-  margin-bottom: 12px;
+  margin-bottom: 16px;
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--clair);
 }
 
-/* Messages d'état */
+/* Apparition maîtrisée des vues (désactivée en mouvement réduit). */
+main > * {
+  animation: apparition 240ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+main > nav {
+  animation-delay: 40ms;
+}
+
+main > .sections,
+main > .message {
+  animation-delay: 80ms;
+}
+
+@keyframes apparition {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Messages d'état : surfaces opaques.
+ * ------------------------------------------------------------------------- */
 .message {
-  padding: 12px 14px;
-  margin-bottom: 16px;
+  position: relative;
+  overflow: hidden;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+  color: var(--texte);
+  background: linear-gradient(180deg, var(--surface-haute), var(--surface));
+  border: 1px solid var(--filet);
+  border-left: 4px solid var(--accent);
   border-radius: var(--rayon);
-  background: var(--fond);
-  border: 1px solid var(--bordure);
-  border-left: 6px solid var(--primaire);
+  box-shadow: inset 0 1px 0 var(--reflet), var(--ombre);
+}
+
+/* Chargement : segment turquoise lent qui parcourt le bas du message. */
+.message--chargement::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 35%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent-lumineux), transparent);
+  animation: chargement 1.8s ease-in-out infinite;
+}
+
+@keyframes chargement {
+  from {
+    transform: translate3d(-100%, 0, 0);
+  }
+  to {
+    transform: translate3d(290%, 0, 0);
+  }
 }
 
 .message--erreur {
   border-left-color: var(--erreur);
-  color: var(--erreur);
 }
 
 .message--erreur strong {
   display: block;
+  margin-bottom: 2px;
+  color: var(--erreur);
 }
 
 .message .bouton {
-  margin-top: 12px;
+  margin-top: 14px;
 }
 
 .bouton {
   min-height: 48px;
-  padding: 10px 20px;
+  padding: 10px 22px;
   font: inherit;
-  font-weight: 600;
-  color: #ffffff;
-  background: var(--primaire);
-  border: 2px solid var(--primaire);
-  border-radius: var(--rayon);
+  font-weight: 650;
+  color: var(--fond-abysse);
+  background: var(--accent);
+  border: 1px solid var(--accent-lumineux);
+  border-radius: 8px;
   cursor: pointer;
+  transition: background-color var(--transition), box-shadow var(--transition), transform var(--transition);
 }
 
-.bouton:hover {
-  background: #06323a;
+.bouton:active {
+  transform: scale(0.98);
 }
 
-/* Compteurs */
+/* ---------------------------------------------------------------------------
+ * Compteurs : instruments en tête de tableau.
+ * ------------------------------------------------------------------------- */
 .compteurs {
   display: grid;
   /* En rem : avec un texte agrandi (200 %), les compteurs passent à la ligne
      au lieu de couper les mots. */
   grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr));
   gap: 8px;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .compteur {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
-  min-height: 72px;
+  gap: 6px;
+  min-height: 84px;
   height: 100%;
-  padding: 8px 10px;
-  color: var(--primaire);
+  padding: 10px 12px;
+  color: var(--texte);
   text-decoration: none;
-  background: var(--fond-evidence);
-  border: 2px solid var(--primaire);
+  background: linear-gradient(180deg, var(--surface-haute), var(--surface));
+  border: 1px solid var(--filet);
   border-radius: var(--rayon);
+  box-shadow: inset 0 1px 0 var(--reflet), var(--ombre);
+  transition: background-color var(--transition), border-color var(--transition), box-shadow var(--transition);
 }
 
-a.compteur:hover {
-  background: #d3eded;
+/* Signature de rail identique aux cartes de la section correspondante. */
+.compteur--en_retard {
+  border-left: 4px solid var(--clair);
+}
+
+.compteur--prioritaire {
+  border-left: 6px double var(--accent-lumineux);
+}
+
+.compteur--a_controler {
+  border-left: 4px dashed var(--texte-secondaire);
+}
+
+/* Invite visible au repos (desktop) : le compteur mène à sa liste. */
+.compteur__invite {
+  display: none;
+}
+
+span.compteur {
+  border-color: rgba(95, 214, 208, 0.1);
 }
 
 .compteur__nombre {
-  font-size: 1.75rem;
-  font-weight: 700;
-  line-height: 1.1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
 }
 
-.compteur__symbole {
-  margin-right: 6px;
-  font-size: 1.125rem;
-  vertical-align: 0.2em;
-}
-
-.compteur__libelle {
+/* Symbole dans un cercle fin, qui s'allume au survol (sélecteur plus précis
+   que .symbole, qui sinon imposerait display: inline-block). */
+.compteur__nombre .compteur__symbole {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 1.75rem;
+  height: 1.75rem;
   font-size: 0.875rem;
+  letter-spacing: 0;
+  color: var(--accent-lumineux);
+  border: 1px solid var(--filet-fort);
+  border-radius: 50%;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+/* Casse normale sur mobile : en majuscules espacées, « PRIORITAIRES » ne
+   tient pas dans un tiers de 360 px. Majuscules réservées aux écrans larges. */
+.compteur__libelle {
+  font-size: 0.8125rem;
   font-weight: 600;
   line-height: 1.2;
+  color: var(--texte-secondaire);
   overflow-wrap: break-word;
+}
+
+@media (min-width: 600px) {
+  .compteur__libelle {
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
 }
 
 .symbole {
@@ -216,17 +624,24 @@ a.compteur:hover {
   text-align: center;
 }
 
-/* Sections */
+/* ---------------------------------------------------------------------------
+ * Sections et cartes.
+ * ------------------------------------------------------------------------- */
 .sections {
   display: grid;
-  gap: 24px;
+  gap: 28px;
 }
 
 .section__titre {
-  font-size: 1.2rem;
+  font-size: 1.125rem;
+  font-weight: 650;
   line-height: 1.3;
-  color: var(--primaire);
+  color: var(--clair);
   scroll-margin-top: 12px;
+}
+
+.section__titre .symbole {
+  color: var(--accent-lumineux);
 }
 
 .section__titre:focus {
@@ -234,17 +649,18 @@ a.compteur:hover {
 }
 
 .section__tri {
-  margin: 6px 0 10px;
+  margin: 6px 0 12px;
+  padding-bottom: 10px;
   font-size: 0.875rem;
   color: var(--texte-secondaire);
+  border-bottom: 1px solid var(--filet);
 }
 
 .section__vide {
-  padding: 12px 14px;
-  font-style: italic;
+  padding: 14px 16px;
   color: var(--texte-secondaire);
-  background: var(--fond);
-  border: 1px dashed var(--bordure);
+  background: var(--surface);
+  border: 1px dashed var(--texte-secondaire);
   border-radius: var(--rayon);
 }
 
@@ -253,31 +669,48 @@ a.compteur:hover {
   gap: 10px;
 }
 
-/* Cartes : la bordure gauche diffère par catégorie (forme + couleur). */
+/*
+ * Cartes opaques (jamais de verre : 13 flous au-dessus d'un fond animé
+ * coûteraient trop cher). Rail gauche distinct par catégorie, lisible en
+ * niveaux de gris : plein clair / double turquoise / pointillé.
+ */
 .carte {
   position: relative;
-  padding: 12px 14px;
-  background: var(--fond);
-  border: 1px solid var(--bordure);
-  border-left: 6px solid var(--primaire);
+  padding: 14px 14px 14px 16px;
+  background: linear-gradient(180deg, var(--surface-haute), var(--surface));
+  border: 1px solid var(--filet);
+  border-left: 4px solid var(--clair);
   border-radius: var(--rayon);
+  box-shadow: inset 0 1px 0 var(--reflet), var(--ombre);
+  transition: border-color var(--transition), box-shadow var(--transition), transform var(--transition);
 }
 
 .carte--prioritaire {
-  border-left-color: var(--accent);
+  border-left: 6px double var(--accent-lumineux);
 }
 
 .carte--a_controler {
-  border-left-style: dashed;
+  border-left: 4px dashed var(--texte-secondaire);
 }
 
-.carte:hover {
-  background: var(--fond-evidence);
+/* Reflet supérieur (::after du lien est réservé à la zone cliquable). */
+.carte::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 12px;
+  right: 12px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(95, 214, 208, 0.35), transparent);
+  opacity: 0.4;
+  pointer-events: none;
+  transition: opacity var(--transition);
 }
 
 .carte:focus-within {
-  outline: 3px solid var(--primaire);
-  outline-offset: 2px;
+  outline: 3px solid var(--accent-lumineux);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 7px rgba(95, 214, 208, 0.22), var(--ombre);
 }
 
 .carte__titre {
@@ -288,7 +721,7 @@ a.compteur:hover {
 .carte__lien {
   display: block;
   text-decoration: none;
-  color: var(--primaire);
+  color: var(--texte);
 }
 
 /* Toute la carte est cliquable, sans englober tout son contenu dans le lien. */
@@ -300,81 +733,101 @@ a.compteur:hover {
 
 .carte__lien:focus-visible {
   outline: none;
-}
-
-.carte__lien:hover .carte__designation {
-  text-decoration: underline;
+  box-shadow: none;
 }
 
 .carte__id {
   display: block;
+  margin-bottom: 2px;
+  font-family: var(--police-mono);
   font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--texte-secondaire);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--accent-lumineux);
   font-variant-numeric: tabular-nums;
 }
 
 .carte__designation {
   display: block;
+  font-weight: 600;
 }
 
 .carte__meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 12px;
-  margin-top: 6px;
+  align-items: center;
+  gap: 6px 12px;
+  margin-top: 8px;
   font-size: 0.875rem;
-  color: var(--texte);
+  color: var(--texte-secondaire);
+  font-variant-numeric: tabular-nums;
 }
 
 .badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 0 8px;
+  padding: 1px 10px 1px 8px;
   font-size: 0.8125rem;
   font-weight: 600;
-  color: var(--primaire);
-  background: var(--fond-evidence);
-  border: 1px solid var(--primaire);
+  color: var(--texte);
+  background: rgba(0, 158, 153, 0.14);
+  border: 1px solid var(--accent-lumineux);
   border-radius: 999px;
 }
 
-/* Fiche */
+.badge .symbole {
+  color: var(--accent-lumineux);
+}
+
+/* ---------------------------------------------------------------------------
+ * Fiche.
+ * ------------------------------------------------------------------------- */
 .fiche {
-  max-width: 40rem;
+  max-width: 42rem;
   margin: 0 auto;
 }
 
 .lien-retour {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   min-height: 48px;
-  margin-bottom: 8px;
-  padding: 0 4px;
+  margin-bottom: 12px;
+  padding: 0 6px;
   font-weight: 600;
+  text-decoration: none;
+  border-radius: 8px;
 }
 
 .fiche__id {
   margin-bottom: 8px;
+  font-family: var(--police-mono);
   font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--texte-secondaire);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--accent-lumineux);
+}
+
+.fiche h1 {
+  margin-bottom: 20px;
 }
 
 /*
  * Chaque ligne libellé / valeur passe sur deux lignes dès que la place manque
  * (flex-wrap, bases en rem) : la fiche suit la taille du texte, y compris à
- * 200 %, au lieu d'un point de rupture en pixels.
+ * 200 %, au lieu d'un point de rupture en pixels. Libellés en casse normale :
+ * un mot en majuscules espacées ne tiendrait pas dans 7.5rem à 200 %.
  */
 .fiche__details {
+  position: relative;
   display: grid;
   gap: 12px;
-  padding: 16px;
-  background: var(--fond);
-  border: 1px solid var(--bordure);
-  border-radius: var(--rayon);
+  padding: 18px 20px;
+  background: linear-gradient(180deg, var(--surface-haute), var(--surface));
+  border: 1px solid var(--filet);
+  border-radius: var(--rayon-panneau);
+  box-shadow: inset 0 1px 0 var(--reflet), var(--ombre);
 }
 
 .fiche__ligne {
@@ -384,10 +837,17 @@ a.compteur:hover {
   gap: 2px 16px;
 }
 
+.fiche__ligne + .fiche__ligne {
+  padding-top: 12px;
+  border-top: 1px solid rgba(230, 245, 245, 0.08);
+}
+
 .fiche__details dt {
   flex: 0 0 7.5rem;
   max-width: 100%;
+  font-size: 0.875rem;
   font-weight: 600;
+  line-height: 1.7;
   color: var(--texte-secondaire);
 }
 
@@ -395,37 +855,275 @@ a.compteur:hover {
   flex: 1 1 9rem;
   min-width: 0;
   overflow-wrap: break-word;
+  font-variant-numeric: tabular-nums;
+}
+
+.fiche__details .valeur-mono {
+  font-family: var(--police-mono);
+  letter-spacing: 0.04em;
 }
 
 .fiche__note {
-  margin-top: 12px;
+  margin-top: 14px;
+  padding: 12px 14px;
   font-size: 0.875rem;
   color: var(--texte-secondaire);
+  background: var(--surface);
+  border: 1px dashed rgba(169, 196, 198, 0.45);
+  border-radius: var(--rayon);
 }
 
+/* Survols réservés aux pointeurs fins : sur écran tactile, un survol « collant »
+   ferait paraître deux cartes actives à la fois. */
+@media (hover: hover) and (pointer: fine) {
+  .bouton:hover {
+    background: var(--accent-lumineux);
+    box-shadow: var(--lueur);
+  }
+
+  a.compteur:hover {
+    border-color: var(--filet-fort);
+    background: rgba(4, 69, 80, 0.85);
+    box-shadow: inset 0 1px 0 var(--reflet), var(--lueur);
+  }
+
+  a.compteur:hover .compteur__nombre .compteur__symbole {
+    border-color: var(--accent-lumineux);
+    box-shadow: 0 0 10px rgba(95, 214, 208, 0.45);
+  }
+
+  .carte:hover {
+    border-top-color: var(--filet-fort);
+    border-right-color: var(--filet-fort);
+    border-bottom-color: var(--filet-fort);
+    box-shadow: inset 0 1px 0 var(--reflet), var(--lueur);
+    transform: translate3d(0, -2px, 0);
+  }
+
+  .carte:hover::before {
+    opacity: 1;
+  }
+
+  .carte__lien:hover .carte__designation {
+    text-decoration: underline;
+    text-decoration-color: var(--accent-lumineux);
+    text-underline-offset: 3px;
+  }
+
+  .lien-retour:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Mobile : les traits de flux sont masqués (batterie, lisibilité).
+ * ------------------------------------------------------------------------- */
+@media (max-width: 599px) {
+  .ambiance__flux {
+    display: none;
+  }
+
+  .ambiance__grille {
+    animation: none;
+  }
+
+  /* Halo B remonté pour éclairer le bas des écrans courts (alpha inchangé). */
+  .ambiance__halo--b {
+    bottom: -22vmax;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Desktop : verre (7 éléments au plus), sections en panneaux, échelle accrue.
+ * ------------------------------------------------------------------------- */
 @media (min-width: 960px) {
+  .bandeau {
+    padding: 14px max(24px, calc((100vw - 1200px) / 2 + 24px));
+  }
+
+  .bandeau__titre {
+    font-size: 1.0625rem;
+  }
+
+  .bascule-ambiance {
+    order: 3;
+    margin-left: 0;
+  }
+
+  .bandeau__mention {
+    order: 2;
+    flex-basis: auto;
+    margin-left: auto;
+    padding: 3px 12px;
+    border: 1px solid var(--filet);
+    border-radius: 999px;
+  }
+
   main {
-    padding: 24px;
+    padding: 36px 24px 56px;
   }
 
   h1 {
-    font-size: 1.75rem;
+    margin-bottom: 24px;
+    font-size: 2.5rem;
   }
 
   /* Même grille que les sections : chaque compteur au-dessus de sa colonne. */
   .compteurs {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 24px;
+    margin-bottom: 32px;
+  }
+
+  .compteur {
+    min-height: 116px;
+    padding: 18px 20px;
+    border-radius: var(--rayon-panneau);
+  }
+
+  .compteur__nombre {
+    font-size: 3rem;
+  }
+
+  /* Invite dans le flux (pas en position absolue) : avec un texte agrandi,
+     elle passe sous le libellé au lieu de le chevaucher. */
+  .compteur__invite {
+    align-self: flex-end;
+    margin-top: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--texte-secondaire);
+    transition: color var(--transition);
+  }
+
+  a.compteur:focus-visible .compteur__invite {
+    color: var(--accent-lumineux);
+  }
+
+  .compteur__nombre .compteur__symbole {
+    width: 2.25rem;
+    height: 2.25rem;
+    font-size: 1rem;
   }
 
   .sections {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
     align-items: start;
+  }
+
+  .section {
+    padding: 20px 18px 18px;
+    background: rgba(10, 46, 53, 0.6);
+    border: 1px solid var(--filet);
+    border-radius: var(--rayon-panneau);
+    box-shadow: inset 0 1px 0 var(--reflet);
+  }
+
+  .section__titre {
+    font-size: 1.25rem;
+  }
+
+  .fiche__details {
+    padding: 24px 28px;
+  }
+}
+
+/* Verre dépoli seulement si pris en charge, sinon surfaces opaques ci-dessus. */
+@media (min-width: 960px) {
+  @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    /* Verre limité au bandeau et aux 3 compteurs (4 éléments) : plus
+       translucide pour être perceptible, panneaux de section sans flou. */
+    .bandeau,
+    .compteur {
+      background: linear-gradient(180deg, rgba(13, 53, 61, 0.62), rgba(10, 46, 53, 0.5));
+      -webkit-backdrop-filter: blur(16px) saturate(150%);
+      backdrop-filter: blur(16px) saturate(150%);
+      box-shadow: inset 0 1px 0 rgba(230, 245, 245, 0.12), var(--ombre);
+    }
+
+    .bandeau {
+      box-shadow: inset 0 -1px 0 var(--filet);
+    }
+
+    a.compteur:hover {
+      background: rgba(4, 69, 80, 0.85);
+    }
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Mouvement réduit : rendu statique complet (ambiance figée à mi-course,
+ * aucune entrée de vue, aucun déplacement au survol, pas de barre animée).
+ * ------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .ambiance *,
+  main > *,
+  .message--chargement::after {
+    animation: none !important;
+  }
+
+  .ambiance__halo--a {
+    transform: translate3d(0, 0, 0) scale(1.06);
+    opacity: 0.65;
+  }
+
+  .ambiance__halo--b {
+    transform: translate3d(0, 0, 0) scale(1.04);
+    opacity: 0.6;
+  }
+
+  .ambiance__flux,
+  .message--chargement::after,
+  .bascule-ambiance {
+    display: none;
+  }
+
+  .carte,
+  .compteur,
+  .bouton,
+  .carte::before,
+  .compteur__nombre .compteur__symbole {
+    transition: none;
+  }
+
+  .carte:hover,
+  .bouton:active {
+    transform: none;
   }
 }
 
 @media (prefers-reduced-motion: no-preference) {
   html {
     scroll-behavior: smooth;
+  }
+}
+
+/* Transparence réduite demandée : surfaces opaques. */
+@media (prefers-reduced-transparency: reduce) {
+  .bandeau,
+  .compteur,
+  .section {
+    background: var(--surface) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+}
+
+/* Couleurs forcées : pas d'ambiance, contours système. */
+@media (forced-colors: active) {
+  .ambiance {
+    display: none;
+  }
+
+  .carte,
+  .compteur,
+  .message,
+  .fiche__details {
+    border: 1px solid CanvasText;
   }
 }
