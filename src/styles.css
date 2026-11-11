@@ -74,13 +74,17 @@ dd {
   margin: 0;
 }
 
-/* Titres et désignations : un mot long (« démonstration ») ne doit jamais
-   déborder avec un texte agrandi à 200 % (césure, sinon coupure). */
-h1,
+/* Un mot long (« démonstration ») ne doit jamais déborder avec un texte agrandi
+   à 200 %. Césure réservée au grand titre h1 ; ailleurs, coupure seulement si
+   un mot ne tient pas (la césure automatique hacherait les désignations). */
 h2,
 h3,
 .carte__designation,
 .fiche__details dd {
+  overflow-wrap: anywhere;
+}
+
+h1 {
   overflow-wrap: break-word;
   -webkit-hyphens: auto;
   hyphens: auto;
@@ -215,14 +219,15 @@ main {
   will-change: transform, opacity;
 }
 
+/* Vitesse ≤ ~55 px/s à 1280 px (traversée de 130 vw en 65 % du cycle). */
 .ambiance__flux--1 {
-  top: 31%;
-  animation: flux 26s ease-in-out 4s infinite;
+  top: 15%;
+  animation: flux 48s linear 3s infinite;
 }
 
 .ambiance__flux--2 {
-  top: 68%;
-  animation: flux 34s ease-in-out 15s infinite;
+  top: 92%;
+  animation: flux 60s linear 20s infinite;
 }
 
 @keyframes derive-a {
@@ -259,7 +264,7 @@ main {
 /* Traversée sur ~65 % du cycle, puis pause (opacité nulle). */
 @keyframes flux {
   0% {
-    transform: translate3d(-40vw, 0, 0);
+    transform: translate3d(-30vw, 0, 0);
     opacity: 0;
   }
   12% {
@@ -269,11 +274,11 @@ main {
     opacity: 1;
   }
   65% {
-    transform: translate3d(140vw, 0, 0);
+    transform: translate3d(100vw, 0, 0);
     opacity: 0;
   }
   100% {
-    transform: translate3d(140vw, 0, 0);
+    transform: translate3d(100vw, 0, 0);
     opacity: 0;
   }
 }
@@ -326,9 +331,84 @@ main {
   box-shadow: 0 0 12px rgba(95, 214, 208, 0.45);
 }
 
+.bandeau__titre {
+  order: 1;
+}
+
 .bandeau__mention {
+  order: 3;
+  flex-basis: 100%;
   font-size: 0.8125rem;
   color: var(--texte-secondaire);
+}
+
+/* Interrupteur de l'ambiance animée (WCAG 2.2.2 : mettre en pause). */
+.bascule-ambiance {
+  order: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin-left: auto;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--texte);
+  background: transparent;
+  border: 1px solid var(--filet-fort);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: border-color var(--transition), background-color var(--transition);
+}
+
+.bascule-ambiance__etat {
+  color: var(--accent-lumineux);
+}
+
+/* Témoin : deux barres (pause possible) ou triangle (lecture possible). */
+.bascule-ambiance::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  background: linear-gradient(90deg, currentColor 0 35%, transparent 35% 65%, currentColor 65%);
+}
+
+.bascule-ambiance[aria-pressed="false"]::before {
+  background: currentColor;
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+
+.bascule-ambiance[aria-pressed="false"] .bascule-ambiance__etat {
+  color: var(--texte-secondaire);
+}
+
+/* Mobile : bouton rond compact (icône seule, 44 × 44 px) ; le libellé reste
+   le nom accessible (masqué visuellement), l'état est porté par aria-pressed. */
+@media (max-width: 599px) {
+  .bascule-ambiance {
+    justify-content: center;
+    width: 44px;
+    padding: 0;
+  }
+
+  .bascule-ambiance__libelle {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .bascule-ambiance__etat {
+    display: none;
+  }
+}
+
+/* Ambiance en pause : figée sur place, sans saut. */
+.ambiance-en-pause .ambiance * {
+  animation-play-state: paused !important;
 }
 
 main {
@@ -436,11 +516,6 @@ main > .message {
   transition: background-color var(--transition), box-shadow var(--transition), transform var(--transition);
 }
 
-.bouton:hover {
-  background: var(--accent-lumineux);
-  box-shadow: var(--lueur);
-}
-
 .bouton:active {
   transform: scale(0.98);
 }
@@ -476,10 +551,22 @@ main > .message {
   transition: background-color var(--transition), border-color var(--transition), box-shadow var(--transition);
 }
 
-a.compteur:hover {
-  border-color: var(--filet-fort);
-  background: rgba(4, 69, 80, 0.85);
-  box-shadow: inset 0 1px 0 var(--reflet), var(--lueur);
+/* Signature de rail identique aux cartes de la section correspondante. */
+.compteur--en_retard {
+  border-left: 4px solid var(--clair);
+}
+
+.compteur--prioritaire {
+  border-left: 6px double var(--accent-lumineux);
+}
+
+.compteur--a_controler {
+  border-left: 4px dashed var(--texte-secondaire);
+}
+
+/* Invite visible au repos (desktop) : le compteur mène à sa liste. */
+.compteur__invite {
+  display: none;
 }
 
 span.compteur {
@@ -511,11 +598,6 @@ span.compteur {
   border: 1px solid var(--filet-fort);
   border-radius: 50%;
   transition: border-color var(--transition), box-shadow var(--transition);
-}
-
-a.compteur:hover .compteur__nombre .compteur__symbole {
-  border-color: var(--accent-lumineux);
-  box-shadow: 0 0 10px rgba(95, 214, 208, 0.45);
 }
 
 /* Casse normale sur mobile : en majuscules espacées, « PRIORITAIRES » ne
@@ -625,18 +707,6 @@ a.compteur:hover .compteur__nombre .compteur__symbole {
   transition: opacity var(--transition);
 }
 
-.carte:hover {
-  border-top-color: var(--filet-fort);
-  border-right-color: var(--filet-fort);
-  border-bottom-color: var(--filet-fort);
-  box-shadow: inset 0 1px 0 var(--reflet), var(--lueur);
-  transform: translate3d(0, -2px, 0);
-}
-
-.carte:hover::before {
-  opacity: 1;
-}
-
 .carte:focus-within {
   outline: 3px solid var(--accent-lumineux);
   outline-offset: 3px;
@@ -664,12 +734,6 @@ a.compteur:hover .compteur__nombre .compteur__symbole {
 .carte__lien:focus-visible {
   outline: none;
   box-shadow: none;
-}
-
-.carte__lien:hover .carte__designation {
-  text-decoration: underline;
-  text-decoration-color: var(--accent-lumineux);
-  text-underline-offset: 3px;
 }
 
 .carte__id {
@@ -736,11 +800,6 @@ a.compteur:hover .compteur__nombre .compteur__symbole {
   border-radius: 8px;
 }
 
-.lien-retour:hover {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
 .fiche__id {
   margin-bottom: 8px;
   font-family: var(--police-mono);
@@ -799,6 +858,11 @@ a.compteur:hover .compteur__nombre .compteur__symbole {
   font-variant-numeric: tabular-nums;
 }
 
+.fiche__details .valeur-mono {
+  font-family: var(--police-mono);
+  letter-spacing: 0.04em;
+}
+
 .fiche__note {
   margin-top: 14px;
   padding: 12px 14px;
@@ -807,6 +871,49 @@ a.compteur:hover .compteur__nombre .compteur__symbole {
   background: var(--surface);
   border: 1px dashed rgba(169, 196, 198, 0.45);
   border-radius: var(--rayon);
+}
+
+/* Survols réservés aux pointeurs fins : sur écran tactile, un survol « collant »
+   ferait paraître deux cartes actives à la fois. */
+@media (hover: hover) and (pointer: fine) {
+  .bouton:hover {
+    background: var(--accent-lumineux);
+    box-shadow: var(--lueur);
+  }
+
+  a.compteur:hover {
+    border-color: var(--filet-fort);
+    background: rgba(4, 69, 80, 0.85);
+    box-shadow: inset 0 1px 0 var(--reflet), var(--lueur);
+  }
+
+  a.compteur:hover .compteur__nombre .compteur__symbole {
+    border-color: var(--accent-lumineux);
+    box-shadow: 0 0 10px rgba(95, 214, 208, 0.45);
+  }
+
+  .carte:hover {
+    border-top-color: var(--filet-fort);
+    border-right-color: var(--filet-fort);
+    border-bottom-color: var(--filet-fort);
+    box-shadow: inset 0 1px 0 var(--reflet), var(--lueur);
+    transform: translate3d(0, -2px, 0);
+  }
+
+  .carte:hover::before {
+    opacity: 1;
+  }
+
+  .carte__lien:hover .carte__designation {
+    text-decoration: underline;
+    text-decoration-color: var(--accent-lumineux);
+    text-underline-offset: 3px;
+  }
+
+  .lien-retour:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
 }
 
 /* ---------------------------------------------------------------------------
@@ -819,6 +926,11 @@ a.compteur:hover .compteur__nombre .compteur__symbole {
 
   .ambiance__grille {
     animation: none;
+  }
+
+  /* Halo B remonté pour éclairer le bas des écrans courts (alpha inchangé). */
+  .ambiance__halo--b {
+    bottom: -22vmax;
   }
 }
 
@@ -834,7 +946,15 @@ a.compteur:hover .compteur__nombre .compteur__symbole {
     font-size: 1.0625rem;
   }
 
+  .bascule-ambiance {
+    order: 3;
+    margin-left: 0;
+  }
+
   .bandeau__mention {
+    order: 2;
+    flex-basis: auto;
+    margin-left: auto;
     padding: 3px 12px;
     border: 1px solid var(--filet);
     border-radius: 999px;
@@ -866,6 +986,23 @@ a.compteur:hover .compteur__nombre .compteur__symbole {
     font-size: 3rem;
   }
 
+  .compteur__invite {
+    position: absolute;
+    right: 20px;
+    bottom: 18px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--texte-secondaire);
+    transition: color var(--transition);
+  }
+
+  a.compteur:focus-visible .compteur__invite {
+    color: var(--accent-lumineux);
+  }
+
   .compteur__nombre .compteur__symbole {
     width: 2.25rem;
     height: 2.25rem;
@@ -880,7 +1017,7 @@ a.compteur:hover .compteur__nombre .compteur__symbole {
 
   .section {
     padding: 20px 18px 18px;
-    background: rgba(10, 46, 53, 0.55);
+    background: rgba(10, 46, 53, 0.6);
     border: 1px solid var(--filet);
     border-radius: var(--rayon-panneau);
     box-shadow: inset 0 1px 0 var(--reflet);
@@ -898,12 +1035,18 @@ a.compteur:hover .compteur__nombre .compteur__symbole {
 /* Verre dépoli seulement si pris en charge, sinon surfaces opaques ci-dessus. */
 @media (min-width: 960px) {
   @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    /* Verre limité au bandeau et aux 3 compteurs (4 éléments) : plus
+       translucide pour être perceptible, panneaux de section sans flou. */
     .bandeau,
-    .compteur,
-    .section {
-      background: rgba(10, 46, 53, 0.72);
-      -webkit-backdrop-filter: blur(14px) saturate(140%);
-      backdrop-filter: blur(14px) saturate(140%);
+    .compteur {
+      background: linear-gradient(180deg, rgba(13, 53, 61, 0.62), rgba(10, 46, 53, 0.5));
+      -webkit-backdrop-filter: blur(16px) saturate(150%);
+      backdrop-filter: blur(16px) saturate(150%);
+      box-shadow: inset 0 1px 0 rgba(230, 245, 245, 0.12), var(--ombre);
+    }
+
+    .bandeau {
+      box-shadow: inset 0 -1px 0 var(--filet);
     }
 
     a.compteur:hover {
@@ -934,7 +1077,8 @@ a.compteur:hover .compteur__nombre .compteur__symbole {
   }
 
   .ambiance__flux,
-  .message--chargement::after {
+  .message--chargement::after,
+  .bascule-ambiance {
     display: none;
   }
 
@@ -955,6 +1099,17 @@ a.compteur:hover .compteur__nombre .compteur__symbole {
 @media (prefers-reduced-motion: no-preference) {
   html {
     scroll-behavior: smooth;
+  }
+}
+
+/* Transparence réduite demandée : surfaces opaques. */
+@media (prefers-reduced-transparency: reduce) {
+  .bandeau,
+  .compteur,
+  .section {
+    background: var(--surface) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
   }
 }
 
