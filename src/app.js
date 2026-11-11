@@ -126,7 +126,7 @@ function rendreChargement() {
   main.innerHTML = `
     <h1 tabindex="-1">Tableau de bord</h1>
     ${htmlCompteurs(null)}
-    <p class="message">Chargement des équipements…</p>`;
+    <p class="message message--chargement">Chargement des équipements…</p>`;
   annoncer("Chargement des équipements…");
 }
 
