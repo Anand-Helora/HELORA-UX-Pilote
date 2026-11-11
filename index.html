@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tableau de bord · Équipements fictifs · Démo</title>
+    <meta name="description" content="Démonstration UX/UI : tableau de bord d'équipements techniques entièrement fictifs." />
+    <link rel="stylesheet" href="src/styles.css" />
+    <script type="module" src="src/app.js"></script>
+  </head>
+  <body>
+    <a class="lien-evitement" href="#contenu">Aller au contenu</a>
+    <header class="bandeau">
+      <p class="bandeau__titre">Équipements techniques</p>
+      <p class="bandeau__mention">Démonstration · données entièrement fictives</p>
+    </header>
+    <!-- Région d'annonce persistante : seul son texte change (lecteurs d'écran). -->
+    <p id="annonce" class="visuellement-masque" role="status" aria-live="polite"></p>
+    <main id="contenu" tabindex="-1" aria-busy="true">
+      <!-- État initial avant exécution du script : chargement. -->
+      <h1>Tableau de bord</h1>
+      <p class="message">Chargement des équipements…</p>
+      <noscript>
+        <p class="message message--erreur">Cette démonstration nécessite JavaScript.</p>
+      </noscript>
+    </main>
+  </body>
+</html>

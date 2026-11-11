@@ -1,0 +1,431 @@
+/*
+ * Profil « HELORA web » (proposition initiale, non officielle) :
+ * primaire #044550, accent #009E99, fond de mise en évidence #E6F5F5.
+ * L'accent n'est jamais utilisé pour du texte ; seulement pour des bordures.
+ */
+:root {
+  --primaire: #044550;
+  --accent: #009e99;
+  --fond-evidence: #e6f5f5;
+  --fond: #ffffff;
+  --fond-page: #f5f7f7;
+  --texte: #1a2426;
+  --texte-secondaire: #4f5b5d;
+  --bordure: #c9d3d4;
+  --erreur: #9b1c1c;
+  --rayon: 8px;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.5;
+  color: var(--texte);
+  background: var(--fond-page);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--fond-page);
+}
+
+h1,
+h2,
+h3,
+p,
+ul,
+dl,
+dd {
+  margin: 0;
+}
+
+ul {
+  padding: 0;
+  list-style: none;
+}
+
+a {
+  color: var(--primaire);
+}
+
+/* Focus visible et cohérent sur tout élément focalisable. */
+:focus-visible {
+  outline: 3px solid var(--primaire);
+  outline-offset: 2px;
+}
+
+/* Titres ciblés par programme (tabindex="-1") : focus visible aussi. */
+[tabindex="-1"]:focus {
+  outline: 3px solid var(--primaire);
+  outline-offset: 4px;
+}
+
+main[tabindex="-1"]:focus {
+  outline: none;
+}
+
+.visuellement-masque {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.lien-evitement {
+  position: absolute;
+  left: 8px;
+  top: -100px;
+  z-index: 10;
+  padding: 12px 16px;
+  background: var(--fond);
+  border-radius: var(--rayon);
+}
+
+.lien-evitement:focus {
+  top: 8px;
+}
+
+/* Bandeau démonstration */
+.bandeau {
+  padding: 10px 16px;
+  background: var(--primaire);
+  color: #ffffff;
+}
+
+.bandeau__titre {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.bandeau__mention {
+  font-size: 0.875rem;
+}
+
+main {
+  display: block;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+h1 {
+  font-size: 1.375rem;
+  line-height: 1.25;
+  color: var(--primaire);
+  margin-bottom: 12px;
+}
+
+/* Messages d'état */
+.message {
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  border-radius: var(--rayon);
+  background: var(--fond);
+  border: 1px solid var(--bordure);
+  border-left: 6px solid var(--primaire);
+}
+
+.message--erreur {
+  border-left-color: var(--erreur);
+  color: var(--erreur);
+}
+
+.message--erreur strong {
+  display: block;
+}
+
+.message .bouton {
+  margin-top: 12px;
+}
+
+.bouton {
+  min-height: 48px;
+  padding: 10px 20px;
+  font: inherit;
+  font-weight: 600;
+  color: #ffffff;
+  background: var(--primaire);
+  border: 2px solid var(--primaire);
+  border-radius: var(--rayon);
+  cursor: pointer;
+}
+
+.bouton:hover {
+  background: #06323a;
+}
+
+/* Compteurs */
+.compteurs {
+  display: grid;
+  /* En rem : avec un texte agrandi (200 %), les compteurs passent à la ligne
+     au lieu de couper les mots. */
+  grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr));
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.compteur {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 72px;
+  height: 100%;
+  padding: 8px 10px;
+  color: var(--primaire);
+  text-decoration: none;
+  background: var(--fond-evidence);
+  border: 2px solid var(--primaire);
+  border-radius: var(--rayon);
+}
+
+a.compteur:hover {
+  background: #d3eded;
+}
+
+.compteur__nombre {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.compteur__symbole {
+  margin-right: 6px;
+  font-size: 1.125rem;
+  vertical-align: 0.2em;
+}
+
+.compteur__libelle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.2;
+  overflow-wrap: break-word;
+}
+
+.symbole {
+  display: inline-block;
+  min-width: 1em;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* Sections */
+.sections {
+  display: grid;
+  gap: 24px;
+}
+
+.section__titre {
+  font-size: 1.2rem;
+  line-height: 1.3;
+  color: var(--primaire);
+  scroll-margin-top: 12px;
+}
+
+.section__titre:focus {
+  outline-offset: 2px;
+}
+
+.section__tri {
+  margin: 6px 0 10px;
+  font-size: 0.875rem;
+  color: var(--texte-secondaire);
+}
+
+.section__vide {
+  padding: 12px 14px;
+  font-style: italic;
+  color: var(--texte-secondaire);
+  background: var(--fond);
+  border: 1px dashed var(--bordure);
+  border-radius: var(--rayon);
+}
+
+.cartes {
+  display: grid;
+  gap: 10px;
+}
+
+/* Cartes : la bordure gauche diffère par catégorie (forme + couleur). */
+.carte {
+  position: relative;
+  padding: 12px 14px;
+  background: var(--fond);
+  border: 1px solid var(--bordure);
+  border-left: 6px solid var(--primaire);
+  border-radius: var(--rayon);
+}
+
+.carte--prioritaire {
+  border-left-color: var(--accent);
+}
+
+.carte--a_controler {
+  border-left-style: dashed;
+}
+
+.carte:hover {
+  background: var(--fond-evidence);
+}
+
+.carte:focus-within {
+  outline: 3px solid var(--primaire);
+  outline-offset: 2px;
+}
+
+.carte__titre {
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+.carte__lien {
+  display: block;
+  text-decoration: none;
+  color: var(--primaire);
+}
+
+/* Toute la carte est cliquable, sans englober tout son contenu dans le lien. */
+.carte__lien::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.carte__lien:focus-visible {
+  outline: none;
+}
+
+.carte__lien:hover .carte__designation {
+  text-decoration: underline;
+}
+
+.carte__id {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--texte-secondaire);
+  font-variant-numeric: tabular-nums;
+}
+
+.carte__designation {
+  display: block;
+}
+
+.carte__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 6px;
+  font-size: 0.875rem;
+  color: var(--texte);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--primaire);
+  background: var(--fond-evidence);
+  border: 1px solid var(--primaire);
+  border-radius: 999px;
+}
+
+/* Fiche */
+.fiche {
+  max-width: 40rem;
+  margin: 0 auto;
+}
+
+.lien-retour {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 48px;
+  margin-bottom: 8px;
+  padding: 0 4px;
+  font-weight: 600;
+}
+
+.fiche__id {
+  margin-bottom: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--texte-secondaire);
+}
+
+/*
+ * Chaque ligne libellé / valeur passe sur deux lignes dès que la place manque
+ * (flex-wrap, bases en rem) : la fiche suit la taille du texte, y compris à
+ * 200 %, au lieu d'un point de rupture en pixels.
+ */
+.fiche__details {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  background: var(--fond);
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+}
+
+.fiche__ligne {
+  display: flex;
+  flex-wrap: wrap;
+  /* 2 px entre libellé et valeur quand ils passent sur deux lignes. */
+  gap: 2px 16px;
+}
+
+.fiche__details dt {
+  flex: 0 0 7.5rem;
+  max-width: 100%;
+  font-weight: 600;
+  color: var(--texte-secondaire);
+}
+
+.fiche__details dd {
+  flex: 1 1 9rem;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.fiche__note {
+  margin-top: 12px;
+  font-size: 0.875rem;
+  color: var(--texte-secondaire);
+}
+
+@media (min-width: 960px) {
+  main {
+    padding: 24px;
+  }
+
+  h1 {
+    font-size: 1.75rem;
+  }
+
+  /* Même grille que les sections : chaque compteur au-dessus de sa colonne. */
+  .compteurs {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+  }
+
+  .sections {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
