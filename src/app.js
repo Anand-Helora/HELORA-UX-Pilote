@@ -16,6 +16,8 @@ import {
   trouverEquipement,
 } from "./tableau-de-bord.js";
 import { choisirFocusTableau, creerEtatFiche, lireOrigine, retourParHistorique } from "./navigation.js";
+import { ecrirePreference, estThemeValide, lirePreference, themeParCle } from "./themes.js";
+import { construireScene, doitRegenerer } from "./ambiance.js";
 
 const main = document.getElementById("contenu");
 const annonce = document.getElementById("annonce");
@@ -167,12 +169,17 @@ function rendreTableau() {
 function rendreFiche(id) {
   const equipement = trouverEquipement(donnees(), id);
   main.setAttribute("aria-busy", "false");
-  const retour = `<a class="lien-retour" href="#/" data-action="retour"><span aria-hidden="true">←</span> Retour au tableau de bord</a>`;
+  // Barre contextuelle : commande Retour (unique) + repère non interactif.
+  const barre = (contexte) => `
+    <div class="fiche__barre">
+      <a class="lien-retour" href="#/" data-action="retour"><span class="lien-retour__fleche" aria-hidden="true">←</span> Retour au tableau de bord</a>
+      <p class="fiche__contexte">${contexte}</p>
+    </div>`;
   if (!equipement) {
     document.title = "Équipement introuvable · Démo";
     main.innerHTML = `
       <article class="fiche">
-        ${retour}
+        ${barre(`<span>Identifiant demandé :</span> <span class="valeur-mono">${echapper(id)}</span>`)}
         <h1 tabindex="-1">Équipement introuvable</h1>
         <p class="message">Aucun équipement fictif ne correspond à l'identifiant « ${echapper(id)} ».</p>
       </article>`;
@@ -186,7 +193,7 @@ function rendreFiche(id) {
   document.title = `${equipement.id} · Fiche équipement · Démo`;
   main.innerHTML = `
     <article class="fiche">
-      ${retour}
+      ${barre(`<span class="visuellement-masque">Fiche consultée :</span>${badge(categorie)} <span class="valeur-mono">${echapper(equipement.id)}</span>`)}
       <p class="fiche__id">${echapper(equipement.id)}</p>
       <h1 tabindex="-1">${echapper(equipement.designation)}</h1>
       <dl class="fiche__details">
@@ -230,7 +237,12 @@ function afficher({ initial = false } = {}) {
     origineFicheAffichee = lireOrigine(history.state);
     rendreFiche(route.id);
     vueCourante = "fiche";
-    if (!initial) focaliser(main.querySelector("h1"));
+    if (!initial) {
+      // Haut de page (la barre « Retour » reste visible, y compris sur mobile),
+      // puis focus sur le titre sans défilement supplémentaire.
+      window.scrollTo({ top: 0, behavior: "instant" });
+      main.querySelector("h1")?.focus({ preventScroll: true });
+    }
     return;
   }
 
@@ -257,9 +269,10 @@ function afficher({ initial = false } = {}) {
 }
 
 /**
- * Met en pause / relance l'ambiance animée (décorative). État en mémoire
- * seulement (aucun stockage persistant) ; sans objet en mouvement réduit,
- * où l'interrupteur est masqué et l'ambiance déjà figée.
+ * Met en pause / relance l'ambiance animée (décorative), quel que soit le
+ * thème : l'état survit aux changements de thème. En mémoire seulement ;
+ * sans objet en mouvement réduit (interrupteur masqué, scène déjà figée) et
+ * en Clair premium (rien ne bouge).
  */
 function basculerAmbiance(bouton) {
   const active = bouton.getAttribute("aria-pressed") === "true";
@@ -267,6 +280,87 @@ function basculerAmbiance(bouton) {
   document.documentElement.classList.toggle("ambiance-en-pause", active);
   bouton.querySelector(".bascule-ambiance__etat").textContent = active ? "en pause" : "activé";
 }
+
+/* ---------------------------------------------------------------------------
+ * Ambiances visuelles (Issue #5) : bascule instantanée, sans rechargement ni
+ * reconstruction de <main> (fiche, défilement et focus sont conservés).
+ * ------------------------------------------------------------------------- */
+const racine = document.documentElement;
+const calqueAmbiance = document.querySelector(".ambiance");
+const mouvementReduit = window.matchMedia("(prefers-reduced-motion: reduce)");
+let tailleScene = null;
+let themeScene = null;
+
+function stockageLocal() {
+  try {
+    return window.localStorage;
+  } catch {
+    return null; // accès interdit (politique de sécurité, cookies bloqués…)
+  }
+}
+
+function themeCourant() {
+  const theme = racine.dataset.theme;
+  return estThemeValide(theme) ? theme : lirePreference(null);
+}
+
+/** (Re)génère la scène décorative si le thème ou le format l'exigent. */
+function rendreScene({ forcer = false } = {}) {
+  if (!calqueAmbiance) return;
+  const taille = { largeur: window.innerWidth, hauteur: window.innerHeight };
+  const theme = themeCourant();
+  if (!forcer && theme === themeScene && !doitRegenerer(tailleScene, taille)) return;
+  calqueAmbiance.innerHTML = construireScene(theme, taille);
+  tailleScene = taille;
+  themeScene = theme;
+}
+
+function synchroniserSelecteur(theme) {
+  for (const radio of document.querySelectorAll('input[name="theme"]')) {
+    radio.checked = radio.value === theme;
+  }
+}
+
+function appliquerTheme(theme) {
+  const description = themeParCle(theme);
+  racine.dataset.theme = description.cle;
+  document.querySelector('meta[name="color-scheme"]')?.setAttribute("content", description.schema);
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", description.couleurNavigateur);
+  synchroniserSelecteur(description.cle);
+  rendreScene();
+}
+
+function choisirTheme(theme) {
+  if (!estThemeValide(theme) || theme === themeCourant()) return;
+  ecrirePreference(stockageLocal(), theme);
+  // Fondu court là où les View Transitions existent, sinon bascule directe.
+  if (typeof document.startViewTransition === "function" && !mouvementReduit.matches) {
+    // Changements rapprochés (flèches maintenues) : la transition précédente
+    // est abandonnée par le navigateur, ce qui rejette sa promesse `ready` ;
+    // le thème, lui, est toujours appliqué. Rejet attendu, donc ignoré.
+    document.startViewTransition(() => appliquerTheme(theme)).ready.catch(() => {});
+  } else {
+    appliquerTheme(theme);
+  }
+}
+
+document.addEventListener("change", (evenement) => {
+  const radio = evenement.target;
+  if (radio instanceof HTMLInputElement && radio.name === "theme" && radio.checked) choisirTheme(radio.value);
+});
+
+let minuterieTaille = 0;
+window.addEventListener("resize", () => {
+  window.clearTimeout(minuterieTaille);
+  minuterieTaille = window.setTimeout(() => rendreScene(), 200);
+});
+
+// Onglet masqué : animations suspendues (en plus du ralentissement natif).
+document.addEventListener("visibilitychange", () => {
+  racine.classList.toggle("ambiance-suspendue", document.visibilityState === "hidden");
+});
+
+appliquerTheme(themeCourant());
 
 document.addEventListener("click", (evenement) => {
   if (evenement.defaultPrevented || evenement.button !== 0) return;

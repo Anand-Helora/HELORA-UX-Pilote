@@ -1,29 +1,73 @@
 <!doctype html>
-<html lang="fr">
+<html lang="fr" data-theme="hybride">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark" />
-    <meta name="theme-color" content="#031e24" />
+    <meta name="theme-color" content="#041318" />
     <title>Tableau de bord · Équipements fictifs · Démo</title>
     <meta name="description" content="Démonstration UX/UI : tableau de bord d'équipements techniques entièrement fictifs." />
     <link rel="stylesheet" href="src/styles.css" />
+    <!-- Thème appliqué avant le premier rendu (pas de flash). -->
+    <script src="src/theme-initial.js"></script>
     <script type="module" src="src/app.js"></script>
   </head>
   <body>
-    <!-- Ambiance décorative (HELORA Futuristic) : hors de <main>, jamais réécrite,
-         non interactive et masquée aux technologies d'assistance. -->
-    <div class="ambiance" aria-hidden="true">
-      <span class="ambiance__halo ambiance__halo--a"></span>
-      <span class="ambiance__halo ambiance__halo--b"></span>
-      <span class="ambiance__grille"></span>
-      <span class="ambiance__flux ambiance__flux--1"></span>
-      <span class="ambiance__flux ambiance__flux--2"></span>
-    </div>
+    <!-- Ambiance décorative : hors de <main>, non interactive, masquée aux
+         technologies d'assistance. Scène SVG générée par src/ambiance.js. -->
+    <div class="ambiance" aria-hidden="true"></div>
     <a class="lien-evitement" href="#contenu">Aller au contenu</a>
     <header class="bandeau">
-      <p class="bandeau__titre">Équipements techniques</p>
-      <p class="bandeau__mention">Démonstration · données entièrement fictives</p>
+      <div class="bandeau__identite">
+        <p class="bandeau__titre">Équipements techniques</p>
+        <p class="bandeau__mention">Démonstration · données entièrement fictives</p>
+      </div>
+      <fieldset class="selecteur-theme">
+        <legend class="selecteur-theme__legende">Ambiance visuelle</legend>
+        <div class="selecteur-theme__options">
+          <label class="option-theme">
+            <input class="option-theme__radio" type="radio" name="theme" value="clair" />
+            <svg class="option-theme__apercu" viewBox="0 0 30 20" aria-hidden="true" focusable="false">
+              <circle cx="10" cy="10" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5" />
+              <path d="M2 16C9 6 20 3 28 4" fill="none" stroke="currentColor" stroke-opacity=".55" />
+              <circle cx="24" cy="12" r="1.4" fill="currentColor" fill-opacity=".6" />
+            </svg>
+            <span class="option-theme__libelle">Clair <span class="option-theme__complement">premium</span></span>
+          </label>
+          <label class="option-theme">
+            <input class="option-theme__radio" type="radio" name="theme" value="neural" />
+            <svg class="option-theme__apercu" viewBox="0 0 30 20" aria-hidden="true" focusable="false">
+              <path d="M4 15L11 5L19 13L27 5M11 5L27 5M4 15L19 13" fill="none" stroke="currentColor" stroke-opacity=".5" />
+              <circle cx="4" cy="15" r="2" fill="currentColor" />
+              <circle cx="11" cy="5" r="2" fill="currentColor" />
+              <circle cx="19" cy="13" r="2.6" fill="currentColor" />
+              <circle cx="27" cy="5" r="2" fill="currentColor" />
+            </svg>
+            <span class="option-theme__libelle">Neural</span>
+          </label>
+          <label class="option-theme">
+            <input class="option-theme__radio" type="radio" name="theme" value="orbital" />
+            <svg class="option-theme__apercu" viewBox="0 0 30 20" aria-hidden="true" focusable="false">
+              <circle cx="15" cy="10" r="5" fill="currentColor" fill-opacity=".3" stroke="currentColor" stroke-width="1.2" />
+              <ellipse cx="15" cy="10" rx="13" ry="4" fill="none" stroke="currentColor" stroke-opacity=".7" transform="rotate(-16 15 10)" />
+              <circle cx="3.6" cy="12.6" r="1.8" fill="currentColor" />
+            </svg>
+            <span class="option-theme__libelle">Orbital</span>
+          </label>
+          <label class="option-theme">
+            <input class="option-theme__radio" type="radio" name="theme" value="hybride" />
+            <svg class="option-theme__apercu" viewBox="0 0 30 20" aria-hidden="true" focusable="false">
+              <path d="M3 5L9 13L13 4M9 13L17 10" fill="none" stroke="currentColor" stroke-opacity=".55" />
+              <circle cx="3" cy="5" r="1.7" fill="currentColor" />
+              <circle cx="9" cy="13" r="1.7" fill="currentColor" />
+              <circle cx="13" cy="4" r="1.7" fill="currentColor" />
+              <circle cx="23" cy="12" r="4" fill="currentColor" fill-opacity=".3" stroke="currentColor" stroke-width="1.2" />
+              <ellipse cx="23" cy="12" rx="7.5" ry="2.6" fill="none" stroke="currentColor" stroke-opacity=".7" transform="rotate(-16 23 12)" />
+            </svg>
+            <span class="option-theme__libelle">Hybride<span class="visuellement-masque"> neural-orbital</span></span>
+          </label>
+        </div>
+      </fieldset>
       <button type="button" class="bascule-ambiance" data-action="ambiance" aria-pressed="true">
         <span class="bascule-ambiance__libelle">Fond animé</span>
         <span class="bascule-ambiance__etat" aria-hidden="true">activé</span>

@@ -287,3 +287,319 @@ describe("ambiance animée décorative (Issue #3)", () => {
     await contexte.close();
   });
 });
+
+describe("V4 : quatre ambiances visuelles (Issue #5)", () => {
+  const DESKTOP = { width: 1280, height: 800 };
+  const CLE = "helora-demo:theme";
+  const theme = (page) => page.evaluate(() => document.documentElement.dataset.theme);
+  const animationsAmbiance = (page) =>
+    page.evaluate(() => document.querySelector(".ambiance").getAnimations({ subtree: true }).map((a) => a.playState));
+  const attendreTheme = (page, cle) => page.waitForFunction((c) => document.documentElement.dataset.theme === c, cle);
+
+  async function pageAvecTheme(cle, viewport = DESKTOP, options = {}) {
+    const contexte = await navigateur.newContext({ viewport, ...options });
+    if (cle) await contexte.addInitScript(([k, v]) => localStorage.setItem(k, v), [CLE, cle]);
+    const page = await contexte.newPage();
+    const erreurs = [];
+    page.on("pageerror", (erreur) => erreurs.push(String(erreur)));
+    page.on("console", (message) => message.type() === "error" && erreurs.push(message.text()));
+    return { contexte, page, erreurs };
+  }
+
+  it("Hybride par défaut, sélecteur synchronisé, décor généré", async () => {
+    const { contexte, page, erreurs } = await pageAvecTheme(null);
+    await page.goto(`${base}#/`);
+    await page.waitForSelector(".sections");
+    assert.equal(await theme(page), "hybride");
+    assert.equal(await page.locator('input[name="theme"]:checked').getAttribute("value"), "hybride");
+    assert.ok((await page.locator(".ambiance svg.scene--hybride").count()) === 1);
+    assert.deepEqual(erreurs, []);
+    await contexte.close();
+  });
+
+  it("change de thème au clavier sans perdre fiche, focus ni historique ; préférence conservée", async () => {
+    const { contexte, page, erreurs } = await pageAvecTheme(null);
+    await page.goto(`${base}#/`);
+    await page.waitForSelector(".sections");
+    await page.click('a.carte__lien[data-id="EQ-DEMO-005"]');
+    await page.waitForSelector(".fiche");
+    const avant = await page.evaluate(() => ({ hash: location.hash, longueur: history.length }));
+    await page.focus('input[name="theme"][value="hybride"]');
+    for (const [touche, attendu] of [["ArrowLeft", "orbital"], ["ArrowLeft", "neural"], ["ArrowLeft", "clair"], ["ArrowRight", "neural"]]) {
+      await page.keyboard.press(touche);
+      await attendreTheme(page, attendu);
+      const etat = await page.evaluate(() => ({
+        hash: location.hash,
+        longueur: history.length,
+        focus: document.activeElement.value,
+        fiche: Boolean(document.querySelector(".fiche h1")),
+      }));
+      assert.deepEqual(etat, { ...avant, focus: attendu, fiche: true }, `après ${touche} → ${attendu}`);
+      assert.equal(await page.evaluate(() => document.querySelector(".ambiance svg").classList[1]), `scene--${attendu}`);
+    }
+    assert.equal(await page.evaluate((k) => localStorage.getItem(k), CLE), "neural");
+    await page.reload();
+    await page.waitForSelector(".fiche");
+    assert.equal(await theme(page), "neural");
+    // « Retour » fonctionne toujours (focus sur la carte d'origine).
+    await page.click('a[data-action="retour"]');
+    await page.waitForSelector(".sections");
+    assert.equal(await focusActuel(page), "EQ-DEMO-005");
+    assert.deepEqual(erreurs, []);
+    await contexte.close();
+  });
+
+  it("changer de thème ne modifie pas la position de défilement", async () => {
+    const { contexte, page } = await pageAvecTheme(null, { width: 1280, height: 500 });
+    await page.goto(`${base}#/equipement/EQ-DEMO-005`);
+    await page.waitForSelector(".fiche");
+    await page.evaluate(() => window.scrollTo({ top: 200, behavior: "instant" }));
+    await page.waitForTimeout(100);
+    for (const cle of ["orbital", "neural", "clair", "hybride"]) {
+      await page.evaluate((c) => document.querySelector(`input[name="theme"][value="${c}"]`).click(), cle);
+      await attendreTheme(page, cle);
+      await page.waitForTimeout(150);
+      assert.equal(await page.evaluate(() => scrollY), 200, cle);
+    }
+    await contexte.close();
+  });
+
+  it("stockage local interdit : Hybride appliqué, changement possible, aucune erreur", async () => {
+    const contexte = await navigateur.newContext({ viewport: MOBILE });
+    await contexte.addInitScript(() => {
+      Object.defineProperty(window, "localStorage", {
+        get() {
+          throw new DOMException("refusé", "SecurityError");
+        },
+      });
+    });
+    const page = await contexte.newPage();
+    const erreurs = [];
+    page.on("pageerror", (erreur) => erreurs.push(String(erreur)));
+    await page.goto(`${base}#/`);
+    await page.waitForSelector(".sections");
+    assert.equal(await theme(page), "hybride");
+    await page.click('label:has(input[value="orbital"])');
+    await attendreTheme(page, "orbital");
+    assert.deepEqual(erreurs, []);
+    await contexte.close();
+  });
+
+  it("préférence corrompue : repli sur Hybride", async () => {
+    const { contexte, page } = await pageAvecTheme("<script>");
+    await page.goto(`${base}#/`);
+    await page.waitForSelector(".sections");
+    assert.equal(await theme(page), "hybride");
+    await contexte.close();
+  });
+
+  for (const cle of ["neural", "orbital", "hybride"]) {
+    it(`${cle} : mouvement réellement perceptible dès les premières secondes`, async () => {
+      const { contexte, page } = await pageAvecTheme(cle);
+      await page.goto(`${base}#/`);
+      await page.waitForSelector(".sections");
+      const etats = await animationsAmbiance(page);
+      assert.ok(etats.length >= 8 && etats.every((e) => e === "running"), String(etats.length));
+      const positions = () =>
+        page.evaluate(() =>
+          [...document.querySelectorAll(".impulsion--tete, .o-satellite")].map((e) => parseFloat(getComputedStyle(e).strokeDashoffset)),
+        );
+      await page.waitForTimeout(300);
+      const t0 = await positions();
+      await page.waitForTimeout(1500);
+      const t1 = await positions();
+      // Avancées le long des chemins (pathLength 100) entre 0,3 s et 1,8 s.
+      const bouges = t0.filter((v, i) => Math.abs(v - t1[i]) > 3).length;
+      assert.ok(bouges >= 2, `${bouges} élément(s) en mouvement`);
+      await contexte.close();
+    });
+  }
+
+  it("Clair premium : décor fixe, aucune animation d'ambiance, Pause masquée sans décaler le sélecteur", async () => {
+    const { contexte, page } = await pageAvecTheme("hybride");
+    await page.goto(`${base}#/`);
+    await page.waitForSelector(".sections");
+    const positionAvant = await page.locator('label:has(input[value="clair"])').boundingBox();
+    await page.click('label:has(input[value="clair"])');
+    await attendreTheme(page, "clair");
+    await page.waitForTimeout(400);
+    assert.deepEqual(await animationsAmbiance(page), []);
+    assert.equal(await page.locator('button[data-action="ambiance"]').isVisible(), false);
+    assert.ok((await page.locator(".ambiance svg.scene--clair > *").count()) > 0, "décor fixe présent");
+    assert.deepEqual(await page.locator('label:has(input[value="clair"])').boundingBox(), positionAvant);
+    await contexte.close();
+  });
+
+  it("la pause est indépendante du thème", async () => {
+    const { contexte, page } = await pageAvecTheme("neural");
+    await page.goto(`${base}#/`);
+    await page.waitForSelector(".sections");
+    await page.click('button[data-action="ambiance"]');
+    assert.ok((await animationsAmbiance(page)).every((e) => e === "paused"));
+    // La lumière du filet du bandeau est aussi mise en pause.
+    const filet = () =>
+      page.evaluate(() => document.getAnimations().filter((a) => a.animationName === "filet-lumiere").map((a) => a.playState));
+    assert.deepEqual(await filet(), ["paused"]);
+    await page.click('label:has(input[value="orbital"])');
+    await attendreTheme(page, "orbital");
+    const etats = await animationsAmbiance(page);
+    assert.ok(etats.length > 0 && etats.every((e) => e === "paused"), String(etats));
+    assert.equal(await page.locator('button[data-action="ambiance"]').getAttribute("aria-pressed"), "false");
+    await page.click('button[data-action="ambiance"]');
+    assert.ok((await animationsAmbiance(page)).every((e) => e === "running"));
+    await contexte.close();
+  });
+
+  for (const cle of ["clair", "neural", "orbital", "hybride"]) {
+    it(`mouvement réduit (${cle}) : zéro animation, scène statique complète, sélecteur utilisable`, async () => {
+      const { contexte, page } = await pageAvecTheme(cle, MOBILE, { reducedMotion: "reduce" });
+      await page.goto(`${base}#/`);
+      await page.waitForSelector(".sections");
+      await page.waitForTimeout(300);
+      assert.equal(await page.evaluate(() => document.getAnimations().length), 0);
+      assert.ok((await page.locator(".ambiance svg > *").count()) > 0, "scène non vide");
+      assert.equal(await page.locator('button[data-action="ambiance"]').isVisible(), false);
+      if (cle !== "clair") {
+        // Impulsions retirées (pas de trait figé en plein vol) ; structure
+        // conservée : nœud allumé ou satellite figé sur son orbite.
+        const etat = await page.evaluate(() => ({
+          impulsionsVisibles: [...document.querySelectorAll(".impulsion")].filter((e) => getComputedStyle(e).visibility !== "hidden").length,
+          reperes:
+            [...document.querySelectorAll(".eclat--fixe")].filter((e) => parseFloat(getComputedStyle(e).opacity) > 0.5).length +
+            [...document.querySelectorAll(".o-satellite")].filter((e) => {
+              const o = parseFloat(getComputedStyle(e).strokeDashoffset);
+              return o < 0 && o > -100;
+            }).length,
+        }));
+        assert.equal(etat.impulsionsVisibles, 0);
+        assert.ok(etat.reperes >= 1, "scène statique avec repères lumineux");
+      }
+      const autre = cle === "neural" ? "orbital" : "neural";
+      await page.click(`label:has(input[value="${autre}"])`);
+      await attendreTheme(page, autre);
+      assert.equal(await page.evaluate(() => document.getAnimations().length), 0);
+      await contexte.close();
+    });
+  }
+
+  it("verre dépoli effectif : aucune animation d'entrée maintenue sur les blocs de <main>", async () => {
+    // Une animation d'opacité maintenue (fill: both) crée une racine
+    // d'arrière-plan : le backdrop-filter ne flouterait plus le décor.
+    const { contexte, page } = await pageAvecTheme("hybride");
+    await page.goto(`${base}#/`);
+    await page.waitForSelector(".sections");
+    await page.waitForTimeout(600);
+    const maintenues = await page.evaluate(() =>
+      [...document.querySelectorAll("main > *")].flatMap((e) => e.getAnimations()).length,
+    );
+    assert.equal(maintenues, 0);
+    assert.match(await page.evaluate(() => getComputedStyle(document.querySelector(".compteur")).backdropFilter), /blur/);
+    await contexte.close();
+  });
+
+  for (const viewport of [DESKTOP, MOBILE]) {
+    it(`lumière du bandeau : aucun débordement horizontal à aucun instant (${viewport.width} px, retour Codex PR #6)`, async () => {
+      const { contexte, page } = await pageAvecTheme("hybride", viewport);
+      await page.goto(`${base}#/`);
+      await page.waitForSelector(".sections");
+      for (const progression of [0, 0.25, 0.5, 0.59, 0.8, 0.99]) {
+        const ecart = await page.evaluate((t) => {
+          const animation = document.getAnimations().find((a) => a.animationName === "filet-lumiere");
+          animation.pause();
+          animation.currentTime = 400 + 6000 * t;
+          return document.documentElement.scrollWidth - window.innerWidth;
+        }, progression);
+        assert.ok(ecart <= 0, `débordement de ${ecart} px à ${progression * 100} % du cycle`);
+      }
+      await contexte.close();
+    });
+  }
+
+  it("cibles tactiles ≥ 44 px sur mobile (sélecteur, pause, retour)", async () => {
+    const { contexte, page } = await pageAvecTheme("hybride", MOBILE);
+    await page.goto(`${base}#/equipement/EQ-DEMO-001`);
+    await page.waitForSelector(".fiche");
+    const tailles = await page.$$eval('.option-theme, button[data-action="ambiance"], a[data-action="retour"]', (els) =>
+      els.map((e) => {
+        const r = e.getBoundingClientRect();
+        return [e.className, Math.round(r.width), Math.round(r.height)];
+      }),
+    );
+    for (const [nom, l, h] of tailles) assert.ok(l >= 44 && h >= 44, `${nom} : ${l}×${h}`);
+    await contexte.close();
+  });
+
+  it("mobile : en ouvrant une fiche depuis une carte, la barre « Retour » est visible et le titre a le focus (revue UX B1)", async () => {
+    const { contexte, page } = await pageAvecTheme("hybride", MOBILE);
+    await page.goto(`${base}#/`);
+    await page.waitForSelector(".sections");
+    for (const mode of ["clic", "clavier"]) {
+      const carte = page.locator('a.carte__lien[data-id="EQ-DEMO-009"]');
+      if (mode === "clic") await carte.click();
+      else {
+        await carte.focus();
+        await page.keyboard.press("Enter");
+      }
+      await page.waitForSelector(".fiche");
+      const etat = await page.evaluate(() => ({
+        hautRetour: document.querySelector(".lien-retour").getBoundingClientRect().top,
+        focus: document.activeElement.tagName,
+      }));
+      assert.ok(etat.hautRetour >= 0, `${mode} : Retour hors écran (${etat.hautRetour})`);
+      assert.equal(etat.focus, "H1");
+      await page.click('a[data-action="retour"]');
+      await page.waitForSelector(".sections");
+      assert.equal(await focusActuel(page), "EQ-DEMO-009");
+    }
+    await contexte.close();
+  });
+
+  it("titre focalisé après un clic souris : pas de cadre de focus (revue UX I1)", async () => {
+    const { contexte, page } = await pageAvecTheme("neural");
+    await page.goto(`${base}#/`);
+    await page.waitForSelector(".sections");
+    await page.click('a.carte__lien[data-id="EQ-DEMO-001"]');
+    await page.waitForSelector(".fiche");
+    const style = await page.evaluate(() => getComputedStyle(document.activeElement).outlineStyle);
+    assert.equal(style, "none");
+    await contexte.close();
+  });
+
+  it("desktop : « Retour » unique, dans la barre contextuelle alignée sur la colonne de la fiche", async () => {
+    for (const route of ["#/equipement/EQ-DEMO-004", "#/equipement/EQ-999"]) {
+      const { contexte, page } = await pageAvecTheme("hybride");
+      await page.goto(`${base}${route}`);
+      await page.waitForSelector(".fiche");
+      assert.equal(await page.locator('a[data-action="retour"]').count(), 1);
+      const geo = await page.evaluate(() => {
+        const r = (s) => document.querySelector(s).getBoundingClientRect();
+        return { retour: r(".lien-retour"), barre: r(".fiche__barre"), fiche: r(".fiche"), titre: r(".fiche h1"), contexte: r(".fiche__contexte") };
+      });
+      assert.ok(Math.abs(geo.retour.left - geo.fiche.left) < 1, "aligné sur la colonne");
+      assert.ok(geo.retour.bottom <= geo.titre.top, "au-dessus du titre, dans l'en-tête");
+      assert.ok(Math.abs(geo.barre.right - geo.fiche.right) < 1);
+      assert.ok(Math.abs(geo.contexte.top + geo.contexte.height / 2 - (geo.retour.top + geo.retour.height / 2)) < 6, "même ligne");
+      assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector(".lien-retour")).position), "static");
+      await contexte.close();
+    }
+  });
+
+  for (const [nom, viewport] of [["mobile 360 px", MOBILE], ["desktop 1280 px", DESKTOP], ["desktop 960 px", { width: 960, height: 800 }]]) {
+    it(`texte à 200 % (${nom}) : bandeau et sélecteur sans débordement, dans chaque thème`, async () => {
+      const { contexte, page } = await pageAvecTheme(null, viewport);
+      await page.goto(`${base}#/equipement/EQ-DEMO-008`);
+      await page.waitForSelector(".fiche");
+      await page.addStyleTag({ content: "html { font-size: 200%; }" });
+      for (const cle of ["clair", "neural", "orbital", "hybride"]) {
+        await page.click(`label:has(input[value="${cle}"])`);
+        await attendreTheme(page, cle);
+        assert.ok((await debordement(page)) <= 0, `${cle} : débordement de ${await debordement(page)} px`);
+        const horsBandeau = await page.$$eval(".option-theme, .bascule-ambiance, .lien-retour", (els) =>
+          els.filter((e) => e.getBoundingClientRect().right > document.documentElement.clientWidth + 0.5).length,
+        );
+        assert.equal(horsBandeau, 0);
+      }
+      await contexte.close();
+    });
+  }
+});
