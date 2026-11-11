@@ -173,7 +173,7 @@ function sceneNeural(largeur, hauteur, mobile) {
     .sort((u, v) => v.l - u.l)
     .slice(0, mobile ? 2 : 4)
     .map((h) => h.i);
-  for (const i of hubs) proche.push(`<circle class="n-hub" cx="${r1(noeuds[i].x)}" cy="${r1(noeuds[i].y)}" r="${mobile ? 16 : 22}"/>`);
+  for (const i of hubs) proche.push(`<circle class="n-hub" cx="${r1(noeuds[i].x)}" cy="${r1(noeuds[i].y)}" r="${mobile ? 16 : 30}"/>`);
 
   // Impulsions sur les liens les plus longs (plus lisibles), départs étalés
   // dès 0,2 s pour qu'au moins 3 traversées soient visibles avant 3 s.
@@ -197,7 +197,7 @@ function sceneNeural(largeur, hauteur, mobile) {
     const delai = 0.2 + k * 0.45 + alea() * 0.2;
     const d = `M${r1(depart.x)} ${r1(depart.y)}L${r1(arrivee.x)} ${r1(arrivee.y)}`;
     proche.push(htmlImpulsion(d, { duree, delai, fixe: k < 3 ? 40 + k * 15 : null }));
-    eclats.push(htmlEclat(arrivee.x, arrivee.y, mobile ? 14 : 18, duree, delai + FRACTION_ARRIVEE * duree, k === 0));
+    eclats.push(htmlEclat(arrivee.x, arrivee.y, mobile ? 14 : 26, duree, delai + FRACTION_ARRIVEE * duree, k === 0));
   });
   proche.push(...eclats);
 
@@ -395,7 +395,7 @@ function sceneHybride(largeur, hauteur, mobile) {
     const duree = total / 210 / FRACTION_ARRIVEE + 0.6;
     const delai = 0.3 + k * 1.6;
     reseau.push(htmlImpulsion(d, { duree, delai, fixe: k === 0 ? (longueurLien / total) * 100 + 4 : null, classe: "impulsion--arrimage" }));
-    eclats.push(htmlEclat(cible.x, cible.y, mobile ? 14 : 20, duree, delai + FRACTION_ARRIVEE * duree * (longueurLien / total), k === 0));
+    eclats.push(htmlEclat(cible.x, cible.y, mobile ? 14 : 28, duree, delai + FRACTION_ARRIVEE * duree * (longueurLien / total), k === 0));
   });
 
   // Impulsions internes au réseau.
@@ -409,7 +409,7 @@ function sceneHybride(largeur, hauteur, mobile) {
     const duree = l.longueur / (160 + alea() * 60) / FRACTION_ARRIVEE + 0.4;
     const delai = 0.9 + k * 0.7;
     reseau.push(htmlImpulsion(`M${r1(a.x)} ${r1(a.y)}L${r1(b.x)} ${r1(b.y)}`, { duree, delai, fixe: k === 0 ? 55 : null }));
-    eclats.push(htmlEclat(b.x, b.y, mobile ? 12 : 16, duree, delai + FRACTION_ARRIVEE * duree, false));
+    eclats.push(htmlEclat(b.x, b.y, mobile ? 12 : 24, duree, delai + FRACTION_ARRIVEE * duree, false));
   });
   reseau.push(...eclats);
   noeuds.forEach((n, i) => {

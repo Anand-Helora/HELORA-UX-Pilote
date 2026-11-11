@@ -867,8 +867,11 @@ h1 {
 }
 
 /* Apparition maîtrisée des vues (désactivée en mouvement réduit). */
+/* `backwards` et non `both` : une animation d'opacité maintenue après sa fin
+   ferait de chaque bloc une « racine d'arrière-plan », et le verre dépoli
+   (backdrop-filter) des compteurs et sections ne flouterait plus le décor. */
 main > * {
-  animation: apparition 240ms var(--courbe) both;
+  animation: apparition 240ms var(--courbe) backwards;
 }
 
 main > nav {
@@ -1254,9 +1257,10 @@ span.compteur {
   display: inline-grid;
   place-items: center;
   flex: none;
-  width: 32px;
-  height: 32px;
+  width: 2rem;
+  height: 2rem;
   font-size: 1.05rem;
+  line-height: 1;
   color: var(--accent-texte);
   background: var(--badge-fond);
   border: 1px solid var(--filet-fort);
@@ -1437,27 +1441,38 @@ span.compteur {
  * Desktop : bandeau sur une ligne, verre, sections en colonnes.
  * ------------------------------------------------------------------------- */
 @media (min-width: 960px) {
+  /* Flex qui passe à la ligne : avec un texte agrandi, le sélecteur
+     descend sous l'identité au lieu de la chevaucher. */
   .bandeau {
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    grid-template-areas: "titre selecteur pause" "mention selecteur pause";
-    gap: 2px 16px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 16px;
     padding: 12px max(24px, calc((100vw - 1200px) / 2 + 24px));
   }
 
+  .bandeau__identite {
+    display: flex;
+    flex: 1 1 14rem;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
   .bandeau__titre {
-    align-self: end;
     font-size: 1.0625rem;
   }
 
   .bandeau__mention {
-    align-self: start;
     padding-left: calc(0.875rem + 10px);
   }
 
   .selecteur-theme {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 10px;
+    gap: 6px 10px;
+    min-width: 0;
     margin-top: 0;
   }
 
@@ -1480,13 +1495,6 @@ span.compteur {
     padding: 4px 22px 4px 10px;
   }
 
-  .option-theme__complement {
-    position: static;
-    width: auto;
-    height: auto;
-    overflow: visible;
-    clip: auto;
-  }
 
   main {
     padding: 36px 24px 56px;
@@ -1558,15 +1566,15 @@ span.compteur {
   }
 }
 
-/* Entre 960 et 1150 px ou texte agrandi : le sélecteur passe sous le titre. */
-@media (min-width: 960px) and (max-width: 1150px) {
-  .bandeau {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas: "titre pause" "mention pause" "selecteur selecteur";
-  }
-
-  .selecteur-theme {
-    margin-top: 8px;
+/* « premium » visible seulement quand la place le permet (toujours présent
+   dans le nom accessible « Clair premium »). */
+@media (min-width: 1100px) {
+  .option-theme__complement {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
   }
 }
 

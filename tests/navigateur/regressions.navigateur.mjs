@@ -473,6 +473,21 @@ describe("V4 : quatre ambiances visuelles (Issue #5)", () => {
     });
   }
 
+  it("verre dépoli effectif : aucune animation d'entrée maintenue sur les blocs de <main>", async () => {
+    // Une animation d'opacité maintenue (fill: both) crée une racine
+    // d'arrière-plan : le backdrop-filter ne flouterait plus le décor.
+    const { contexte, page } = await pageAvecTheme("hybride");
+    await page.goto(`${base}#/`);
+    await page.waitForSelector(".sections");
+    await page.waitForTimeout(600);
+    const maintenues = await page.evaluate(() =>
+      [...document.querySelectorAll("main > *")].flatMap((e) => e.getAnimations()).length,
+    );
+    assert.equal(maintenues, 0);
+    assert.match(await page.evaluate(() => getComputedStyle(document.querySelector(".compteur")).backdropFilter), /blur/);
+    await contexte.close();
+  });
+
   it("cibles tactiles ≥ 44 px sur mobile (sélecteur, pause, retour)", async () => {
     const { contexte, page } = await pageAvecTheme("hybride", MOBILE);
     await page.goto(`${base}#/equipement/EQ-DEMO-001`);

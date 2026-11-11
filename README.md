@@ -30,13 +30,17 @@ Démonstration **entièrement fictive** : aucune donnée, aucun lieu ni aucune r
 | `index.html` | Page unique de l'application |
 | `src/donnees-fictives.js` | 13 équipements fictifs (`EQ-DEMO-001` à `013`) |
 | `src/tableau-de-bord.js` | Logique pure testée : compteurs, sections, tri, routes, états simulés |
-| `src/app.js` | Rendu DOM, navigation et gestion du focus |
+| `src/app.js` | Rendu DOM, navigation, gestion du focus et bascule d'ambiance |
+| `src/themes.js` | Liste des 4 ambiances, préférence locale protégée (logique pure testée) |
+| `src/ambiance.js` | Génération des scènes décoratives SVG (logique pure testée, animée en CSS) |
+| `src/theme-initial.js` | Applique l'ambiance avant le premier rendu (pas de flash) |
 | `src/styles.css` | Styles mobile-first, profil « HELORA web » |
 | `src/navigation.js` | État de navigation porté par l'historique (carte d'origine d'une fiche) |
 | `tests/tableau-de-bord.test.js`, `tests/navigation.test.js` | Tests `node --test` |
 | `tests/navigateur/` | Tests navigateur optionnels (`npm run test:navigateur`) |
 | `docs/captures/issue-1/` | Captures navigateur de la démo (première version, thème clair) |
 | `docs/captures/issue-3/` | Captures et vidéos de la direction « HELORA Futuristic » (concept « Abysse ») |
+| `docs/captures/issue-5/` | V4 : captures des 4 ambiances, fiches, mouvement réduit, vidéos des animations |
 
 ### Ouvrir l'application localement
 
@@ -49,6 +53,8 @@ python3 -m http.server 8000
 Puis ouvrir <http://localhost:8000/>. Avec Node.js, `npx serve .` fonctionne aussi (télécharge l'outil à la demande).
 
 ### Essayer
+- **Ambiance visuelle (V4, Issue #5)** : le sélecteur du bandeau propose *Clair premium*, *Neural*, *Orbital* et *Hybride* (par défaut). Le changement est instantané (flèches du clavier dans le groupe), sans perdre la fiche ouverte, le défilement ni le focus ; le choix est mémorisé dans ce navigateur (`localStorage`, clé `helora-demo:theme`, aucune donnée métier). Pour revenir au défaut : vider le stockage du site.
+- « Fond animé » met en pause / relance le décor quel que soit le thème. Avec la préférence système « réduire les animations », la scène est figée et la commande disparaît.
 
 - Toucher un compteur pour aller à sa section : le focus passe sur le titre de la section.
 - Toucher une carte pour ouvrir sa fiche (lecture seule), puis « Retour au tableau de bord » ou le bouton retour du navigateur : le focus revient sur la carte d'origine, y compris après Précédent puis Suivant (l'origine est mémorisée dans l'entrée d'historique, sans stockage persistant).
