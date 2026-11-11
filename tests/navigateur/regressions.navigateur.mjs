@@ -193,6 +193,36 @@ describe("texte agrandi à 200 % en 360 px (retour Codex n° 2)", () => {
     });
   }
 
+  for (const largeur of [960, 1280]) {
+    it(`desktop ${largeur} px à 200 % : rien ne déborde ni ne se chevauche dans les compteurs (retour Codex PR #4)`, async () => {
+      const { page } = await nouvellePage({ width: largeur, height: 800 });
+      await page.goto(`${base}#/`);
+      await page.waitForSelector(".sections");
+      await page.addStyleTag({ content: "html { font-size: 200%; }" });
+      assert.ok((await debordement(page)) <= 0, `débordement de ${await debordement(page)} px`);
+      const defauts = await page.$$eval("a.compteur", (compteurs) =>
+        compteurs.flatMap((compteur) => {
+          const boite = compteur.getBoundingClientRect();
+          const parties = [".compteur__nombre", ".compteur__libelle", ".compteur__invite"]
+            .map((s) => compteur.querySelector(s))
+            .filter((e) => e && getComputedStyle(e).display !== "none")
+            .map((e) => [e.className, e.getBoundingClientRect()]);
+          const erreurs = [];
+          for (const [nom, r] of parties) {
+            if (r.left < boite.left - 0.5 || r.right > boite.right + 0.5 || r.bottom > boite.bottom + 0.5) erreurs.push(`${nom} hors du compteur`);
+          }
+          for (let i = 0; i < parties.length; i++) for (let j = i + 1; j < parties.length; j++) {
+            const [na, a] = parties[i], [nb, b] = parties[j];
+            if (!(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom)) erreurs.push(`${na} chevauche ${nb}`);
+          }
+          return erreurs;
+        }),
+      );
+      assert.deepEqual(defauts, []);
+      await page.close();
+    });
+  }
+
   it("la fiche garde libellé et valeur côte à côte à taille normale", async () => {
     const { page } = await nouvellePage();
     await page.goto(`${base}#/equipement/EQ-DEMO-010`);

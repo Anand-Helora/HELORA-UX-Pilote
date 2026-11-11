@@ -986,10 +986,11 @@ span.compteur {
     font-size: 3rem;
   }
 
+  /* Invite dans le flux (pas en position absolue) : avec un texte agrandi,
+     elle passe sous le libellé au lieu de le chevaucher. */
   .compteur__invite {
-    position: absolute;
-    right: 20px;
-    bottom: 18px;
+    align-self: flex-end;
+    margin-top: auto;
     display: inline-flex;
     align-items: center;
     gap: 6px;
