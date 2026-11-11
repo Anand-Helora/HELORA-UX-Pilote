@@ -25,7 +25,7 @@ Ce fichier décrit le comportement attendu de tout agent travaillant dans ce dé
 
 ## Tests
 
-- Code dans `src/`, tests dans `tests/` (fichiers `*.test.js`), exécutés avec `node --test` via `npm test` (après `npm ci`, qui installe la seule dépendance de build verrouillée).
+- Code dans `src/`, tests dans `tests/` (fichiers `*.test.js`), exécutés avec `node --test` via `npm test` (après `npm ci`, qui installe les dépendances de build verrouillées).
 - Aucune dépendance tierce tant qu'elle n'est pas nécessaire ; les tests navigateur (Playwright…) s'ajoutent au cas par cas.
 
 ## Conception et revue UX/UI (si interface concernée)

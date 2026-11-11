@@ -170,6 +170,27 @@ describe("construire : analyse des imports (retours Codex PR #10)", () => {
     assert.ok(html.includes(`src="${manifeste["src/app.js"]}"`));
   });
 
+  it("suit les attributs HTML espacés, non cités ou en majuscules", async () => {
+    const source = await miniSite("html-attributs", {
+      "index.html": '<!doctype html><LINK REL=stylesheet HREF = "src/styles.css"><script src=src/theme.js></script><script type=module SRC = \'src/app.js\'></script>',
+      "src/styles.css": "body{color:red}",
+      "src/theme.js": "",
+      "src/app.js": "",
+    });
+    const sortie = join(temp, "dist-html-attributs");
+    const manifeste = await construire(source, sortie);
+    assert.deepEqual(Object.keys(manifeste).sort(), ["src/app.js", "src/styles.css", "src/theme.js"]);
+    const html = await readFile(join(sortie, "index.html"), "utf8");
+    for (const f of Object.values(manifeste)) assert.ok(html.includes(f), f);
+    assert.doesNotMatch(html, /src\/(styles|theme|app)\.(css|js)\b/);
+    assert.deepEqual(await fichiers(sortie), ["index.html", ...Object.values(manifeste)].sort());
+  });
+
+  it("verifier détecte une référence HTML non citée vers un fichier absent", async () => {
+    const sortie = await miniSite("dist-manuel-non-cite", { "index.html": "<script src=src/absent.js></script>" });
+    await assert.rejects(verifier(sortie), /absent du site construit/);
+  });
+
   const refus = [
     ["import nu", { "src/app.js": 'import "lodash";\n' }, /« lodash » non pris en charge/],
     ["import absolu", { "src/app.js": 'import "/src/x.js";\n' }, /« \/src\/x\.js » non pris en charge/],
@@ -184,6 +205,13 @@ describe("construire : analyse des imports (retours Codex PR #10)", () => {
     ["chemin HTML absolu", { "index.html": '<script src="/src/app.js"></script>', "src/app.js": "" }, /chemin absolu/],
     ["script module en ligne", { "index.html": '<script type="module">import "./src/app.js";</script>' }, /script module en ligne/],
     ["CSS avec url()", { "index.html": '<link rel="stylesheet" href="s.css">', "s.css": "a{background:url(img.png)}" }, /@import\/url/],
+    ["CSS avec URL() en majuscules", { "index.html": '<link rel="stylesheet" href="s.css">', "s.css": "a{background:URL(./image.png)}" }, /@import\/url/],
+    ["CSS avec @IMPORT en majuscules", { "index.html": '<link rel="stylesheet" href="s.css">', "s.css": '@IMPORT "./theme.css";' }, /@import\/url/],
+    ["CSS avec image-set()", { "index.html": '<link rel="stylesheet" href="s.css">', "s.css": 'a{background:image-set("a.png" 1x)}' }, /@import\/url/],
+    ["style en ligne avec url()", { "index.html": '<div style="background:Url(a.png)"></div>' }, /index\.html.*@import\/url/],
+    ["balise <style> avec @import", { "index.html": '<style>@import "x.css";</style>' }, /index\.html.*@import\/url/],
+    ["balise <base>", { "index.html": '<base href="/autre/">' }, /<base>/],
+    ["attribut HTML non cité vers un fichier absent", { "index.html": "<script src=src/absent.js></script>" }, /introuvable : src\/absent\.js/],
   ];
   for (const [nom, contenus, attendu] of refus) {
     it(`refuse explicitement : ${nom}, sans laisser de dist/`, async () => {

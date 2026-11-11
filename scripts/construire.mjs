@@ -14,7 +14,9 @@
  *
  * Les imports sont repérés par es-module-lexer (analyseur ESM utilisé par Vite,
  * sans dépendance) : commentaires et chaînes sont ignorés, `import /* … *\/ "x"`
- * est bien suivi. Toute forme non prise en charge (import nu ou absolu, import
+ * est bien suivi. index.html est analysé par parse5 (analyseur HTML conforme
+ * au standard) : attributs espacés, non cités ou en majuscules et commentaires
+ * sont traités comme par un navigateur. Toute forme non prise en charge (import nu ou absolu, import
  * dynamique non littéral, attributs d'import, import.meta, ressource HTML autre
  * que CSS/JS…) fait échouer le build avec un message explicite. Le site est
  * construit dans un dossier temporaire, vérifié (chaque référence publiée
@@ -26,19 +28,57 @@ import { mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promise
 import { dirname, join, posix, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { init, parse } from "es-module-lexer";
+import { parse as analyserHtml } from "parse5";
 
 const RACINE_DEPOT = fileURLToPath(new URL("../", import.meta.url));
 
 const MODULE = /\.m?js$/;
-// Attributs href/src de index.html (hors commentaires HTML, voir horsCommentaires).
-const MOTIF_HTML = /(\b(?:href|src)=)(["'])([^"']*)\2/gi;
 const AVEC_SCHEMA = /^[a-z][a-z0-9+.-]*:/i;
 // Chemin de base du site publié : sert à vérifier qu'aucune référence n'en sort.
 export const BASE_PAGES = "/HELORA-UX-Pilote/";
 
-/** Applique `transformer` au HTML en laissant intacts les commentaires `<!-- … -->`. */
-const horsCommentaires = (html, transformer) =>
-  html.split(/(<!--[\s\S]*?-->)/).map((morceau, i) => (i % 2 ? morceau : transformer(morceau))).join("");
+// Références de fichier dans du CSS (insensible à la casse, comme CSS) ; les
+// fragments (`url(#id)`) et les URI data: restent permis.
+const REFERENCE_CSS = /@import\b|\b(?:url|image-set|src)\s*\(\s*["']?(?!#|data:)/i;
+
+/** Garde-fou : le build ne réécrit pas les références CSS, il les refuse. */
+function verifierCss(css, ou) {
+  if (REFERENCE_CSS.test(css)) throw new Error(`${ou} référence d'autres fichiers (@import/url) : non pris en charge par le build.`);
+}
+
+/**
+ * Références href/src de index.html à publier, repérées par parse5 :
+ * [{ nom, chemin, debut, fin }] (positions de l'attribut entier dans le
+ * source). Refuse explicitement les formes non prises en charge.
+ */
+function referencesHtml(html) {
+  const references = [];
+  const visiter = (noeud) => {
+    const attributs = Object.fromEntries((noeud.attrs ?? []).map(({ name, value }) => [name, value]));
+    if (noeud.tagName === "base") throw new Error("index.html : balise <base> non prise en charge (change la résolution des chemins).");
+    if ("srcset" in attributs) throw new Error("index.html : srcset non pris en charge par le build.");
+    if ("style" in attributs) verifierCss(attributs.style, "index.html (attribut style)");
+    if (noeud.tagName === "style") verifierCss(noeud.childNodes.map((t) => t.value ?? "").join(""), "index.html (<style>)");
+    if (noeud.tagName === "script" && !("src" in attributs)) {
+      const code = noeud.childNodes.map((t) => t.value ?? "").join("");
+      if ((attributs.type ?? "").trim().toLowerCase() === "module" || /\bimport\s*\(/.test(code)) {
+        throw new Error("index.html : script module en ligne (ou import() en ligne) non pris en charge (utiliser src=).");
+      }
+    }
+    for (const nom of ["href", "src"]) {
+      if (!(nom in attributs)) continue;
+      const chemin = referenceHtml(attributs[nom]);
+      if (chemin) {
+        const { startOffset: debut, endOffset: fin } = noeud.sourceCodeLocation.attrs[nom];
+        references.push({ nom, chemin, debut, fin });
+      }
+    }
+    for (const enfant of noeud.childNodes ?? []) visiter(enfant);
+    if (noeud.content) visiter(noeud.content); // <template>
+  };
+  visiter(analyserHtml(html, { sourceCodeLocationInfo: true }));
+  return references;
+}
 
 /**
  * Référence locale de index.html à publier (CSS/JS/MJS relatif), `null` si
@@ -125,10 +165,10 @@ export async function construire(source = RACINE_DEPOT, sortie = join(RACINE_DEP
         if (!rel.startsWith(".")) rel = `./${rel}`;
         contenu = contenu.slice(0, debut) + (dynamique ? JSON.stringify(rel) : rel) + contenu.slice(fin);
       }
-    } else if (/@import|url\(\s*["']?(?!#|data:)/.test(contenu)) {
+    } else {
       // Garde-fou : ces références ne sont pas réécrites ; échouer plutôt
       // que publier une ressource dont le cache ne serait pas invalidé.
-      throw new Error(`${cheminRelatif} référence d'autres fichiers (@import/url) : non pris en charge par le build.`);
+      verifierCss(contenu, cheminRelatif);
     }
 
     const cheminHache = nomHache(cheminRelatif, hash(contenu));
@@ -146,20 +186,12 @@ export async function construire(source = RACINE_DEPOT, sortie = join(RACINE_DEP
 
   try {
     let html = await readFile(join(racine, "index.html"), "utf8");
-    const references = new Map();
-    horsCommentaires(html, (morceau) => {
-      if (/<script\b(?![^>]*\bsrc=)[^>]*\btype=["']?module/i.test(morceau)) throw new Error("index.html : script module en ligne non pris en charge (utiliser src=).");
-      if (/\bsrcset=/i.test(morceau)) throw new Error("index.html : srcset non pris en charge par le build.");
-      for (const [, , , valeur] of morceau.matchAll(MOTIF_HTML)) {
-        const chemin = referenceHtml(valeur);
-        if (chemin) references.set(valeur, chemin);
-      }
-      return morceau;
-    });
-    for (const [valeur, chemin] of references) references.set(valeur, await traiter(chemin, "index.html"));
-    html = horsCommentaires(html, (morceau) =>
-      morceau.replace(MOTIF_HTML, (tout, attribut, guillemet, valeur) => (references.has(valeur) ? `${attribut}${guillemet}${references.get(valeur)}${guillemet}` : tout)),
-    );
+    const references = referencesHtml(html);
+    for (const ref of references) ref.cible = await traiter(ref.chemin, "index.html");
+    // Seul l'attribut concerné est réécrit, de la fin vers le début.
+    for (const { nom, cible, debut, fin } of references.reverse()) {
+      html = `${html.slice(0, debut)}${nom}="${cible.replaceAll("&", "&amp;").replaceAll('"', "&quot;")}"${html.slice(fin)}`;
+    }
     await writeFile(join(construction, "index.html"), html);
     await verifier(construction);
     await rename(construction, destination);
@@ -192,10 +224,7 @@ export async function verifier(dossier) {
     }
   };
   const html = await readFile(join(dossier, "index.html"), "utf8");
-  horsCommentaires(html, (morceau) => {
-    for (const [, , , valeur] of morceau.matchAll(MOTIF_HTML)) if (referenceHtml(valeur)) exiger(valeur, "index.html");
-    return morceau;
-  });
+  for (const { chemin } of referencesHtml(html)) exiger(chemin, "index.html");
   while (aVisiter.length) {
     const chemin = aVisiter.pop();
     let contenu;
@@ -205,6 +234,7 @@ export async function verifier(dossier) {
       throw new Error(`Vérification : ${chemin} référencé mais absent du site construit.`);
     }
     if (MODULE.test(chemin)) for (const { specifiant } of importsRelatifs(contenu, chemin)) exiger(specifiant, chemin);
+    else verifierCss(contenu, chemin);
   }
   return [...atteints].sort();
 }

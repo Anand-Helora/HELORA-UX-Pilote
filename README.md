@@ -16,7 +16,7 @@ Il ne contient **aucune application métier**, aucun appel à une API d'IA, aucu
 .github/workflows/ci.yml   Tests automatiques sur les pull requests vers main
 src/slugify.js             Exemple de fonction pure (à remplacer)
 tests/slugify.test.js      Tests unitaires de l'exemple (node --test)
-package.json               Scripts « npm test » et « npm run construire » ; une dépendance de build (es-module-lexer)
+package.json               Scripts « npm test » et « npm run construire » ; deux dépendances de build (es-module-lexer, parse5)
 AGENTS.md / CLAUDE.md      Consignes pour les agents IA
 .gitignore                 Fichiers à ne pas versionner
 ```
@@ -116,7 +116,7 @@ Les paramètres GitHub et les intégrations **ne sont pas copiés** par « Use t
 
 Le site publié est **construit** par `npm run construire` (`scripts/construire.mjs`, sans dépendance) dans `dist/` (non versionné) : chaque CSS/JS référencé par `index.html`, ainsi que chaque module importé transitivement, est copié sous un nom contenant le hash de son contenu (`src/app.js` → `src/app.<hash>.js`), et les références sont réécrites. Une ressource modifiée — ou un module qui en importe une — change donc d'URL ; les autres gardent la leur. Une **actualisation normale** suffit : le navigateur revalide `index.html`, qui pointe vers les nouvelles URL. Aucun `?v=` à changer à la main, aucun `Cache-Control: no-store`. Les sources (`index.html`, `src/`) ne sont pas modifiées et restent servables telles quelles en local.
 
-Les imports sont analysés par [`es-module-lexer`](https://www.npmjs.com/package/es-module-lexer) (seule dépendance de développement, version exacte verrouillée dans `package-lock.json`) : un import en commentaire est ignoré, un import avec commentaire intermédiaire ou un module `.mjs` est suivi. Toute forme non prise en charge (import nu ou absolu, import dynamique non littéral, `import.meta`, ressource HTML autre que CSS/JS, `url()` dans le CSS…) fait **échouer** le build avec un message explicite ; le site est vérifié (références présentes, sous `/HELORA-UX-Pilote/`) avant d'être placé dans `dist/`, si bien qu'un échec ne laisse aucun `dist/` partiel.
+Les imports sont analysés par [`es-module-lexer`](https://www.npmjs.com/package/es-module-lexer) et `index.html` par [`parse5`](https://www.npmjs.com/package/parse5) (dépendances de développement, versions exactes verrouillées dans `package-lock.json`) : un import en commentaire est ignoré, un import avec commentaire intermédiaire ou un module `.mjs` est suivi, et les attributs HTML sont lus comme par un navigateur (espacés, non cités, en majuscules). Les références de fichier dans le CSS (`url()`, `@import`, `image-set()`, quelle que soit la casse) sont refusées. Toute forme non prise en charge (import nu ou absolu, import dynamique non littéral, `import.meta`, ressource HTML autre que CSS/JS, `url()` dans le CSS…) fait **échouer** le build avec un message explicite ; le site est vérifié (références présentes, sous `/HELORA-UX-Pilote/`) avant d'être placé dans `dist/`, si bien qu'un échec ne laisse aucun `dist/` partiel.
 
 Le workflow `.github/workflows/pages.yml` installe les dépendances (`npm ci`), lance les tests, construit et déploie lors d'un push sur `main`, c'est-à-dire **après une fusion humaine** (relance manuelle possible via *Run workflow*, depuis `main` uniquement). Ce déploiement automatique est une exception autorisée par la personne propriétaire pour ce dépôt pilote seulement (voir `AGENTS.md`) ; les branches de PR ne sont jamais publiées.
 
