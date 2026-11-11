@@ -21,6 +21,47 @@ AGENTS.md / CLAUDE.md      Consignes pour les agents IA
 .gitignore                 Fichiers à ne pas versionner
 ```
 
+## Pilote UX/UI : tableau de bord fictif des équipements (Issue #1)
+
+Démonstration **entièrement fictive** : aucune donnée, aucun lieu ni aucune règle métier HELORA réels. La répartition en trois catégories (`en_retard`, `prioritaire`, `a_controler`, une seule par équipement) est une contrainte du test, pas une règle métier.
+
+| Fichier | Rôle |
+| --- | --- |
+| `index.html` | Page unique de l'application |
+| `src/donnees-fictives.js` | 13 équipements fictifs (`EQ-DEMO-001` à `013`) |
+| `src/tableau-de-bord.js` | Logique pure testée : compteurs, sections, tri, routes, états simulés |
+| `src/app.js` | Rendu DOM, navigation et gestion du focus |
+| `src/styles.css` | Styles mobile-first, profil « HELORA web » |
+| `tests/tableau-de-bord.test.js` | Tests `node --test` |
+| `docs/captures/issue-1/` | Captures navigateur de la démo |
+
+### Ouvrir l'application localement
+
+Les modules JavaScript ne se chargent pas depuis `file://` : servir le dossier avec un serveur statique, sans rien installer dans le dépôt.
+
+```bash
+python3 -m http.server 8000
+```
+
+Puis ouvrir <http://localhost:8000/>. Avec Node.js, `npx serve .` fonctionne aussi (télécharge l'outil à la demande).
+
+### Essayer
+
+- Toucher un compteur pour aller à sa section : le focus passe sur le titre de la section.
+- Toucher une carte pour ouvrir sa fiche (lecture seule), puis « Retour au tableau de bord » ou le bouton retour du navigateur : le focus revient sur la carte d'origine.
+- États simulés : `?etat=chargement`, `?etat=vide`, `?etat=erreur` (par exemple <http://localhost:8000/?etat=erreur>). Le bouton « Réessayer » de l'état d'erreur réaffiche les données.
+- Fiche inconnue : <http://localhost:8000/#/equipement/EQ-999>.
+
+### Tri de démonstration (non métier)
+
+Ordre stable, avec départage par identifiant croissant :
+
+- **En retard** : échéance la plus ancienne d'abord ;
+- **Prioritaires** : priorité 1 (la plus haute) à 3 ;
+- **À contrôler** : échéance la plus proche d'abord.
+
+Les catégories sont fixées dans les données ; elles ne sont jamais recalculées à partir de la date du jour.
+
 ## Lancer les tests en local
 
 Prérequis : [Node.js](https://nodejs.org/) 20 ou plus récent (version LTS recommandée). Aucune installation de paquet n'est nécessaire.
